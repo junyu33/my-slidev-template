@@ -1,560 +1,707 @@
-# The hodgepodge of proxy configuration
+# Verilog: A Practice Approach
+
+junyu33
 
 ---
 
-## disclaimer
+# official website
 
-**This lecture only introduces proxy configuration method in different context from a university students' perspective. It won't provide any information about proxy sources, please STFW on your own.**
-
----
-
-## Introduction
-
-Proxy is a server that acts as an intermediary for requests from clients seeking resources from other servers. A client connects to the proxy server, requesting some service, such as a file, connection, web page, or other resource available from a different server and the proxy server evaluates the request as a way to simplify and control its complexity.
-
-Due to the inherent feature of our country, we need to use proxy to access some foreign websites or speed up the working efficiency when setting up the environment. This lecture will introduce the proxy configuration method in different context.
-
----
-
-# Basic Assumptions
-
-- The proxy server is running on `localhost` and listening on port `7897`, unless otherwise specified.
-- The proxy server is a HTTP/HTTPS proxy server, unless otherwise specified.
-- You neither use `global proxy` nor `TUN mode`.
-
----
-
-# Linux/Mac shell
+- https://www.veripool.org/verilator/
+- https://verilator.org
 
 <v-click>
 
-```bash
-alias setproxy='export http_proxy="http://127.0.0.1:7897"; \
-export https_proxy="http://127.0.0.1:7897"; \
-export socks_proxy="http://127.0.0.1:7897"'
-alias unsetproxy='unset http_proxy;unset https_proxy;unset socks_proxy'
-source ~/.bashrc (~/.zshrc etc.)
+# installation
+
+- verilator
+
+```sh
+sudo apt-get install verilator   # On Debian or Ubuntu
+```
+
+- gtkwave
+
+```sh
+sudo apt-get install gtkwave   # On Debian or Ubuntu
 ```
 
 </v-click>
 
 ---
 
-# Windows shell
+# hello world
+
+```sh
+mkdir playground
+touch top.v main.cpp
+```
 
 <v-click>
 
-- cmd
+- top.v
 
-```cmd
-# 设置代理
-netsh winhttp set proxy 127.0.0.1:7897
-# 取消代理
-netsh winhttp reset proxy
-# 查看代理
-netsh winhttp show proxy
+```verilog
+module top;
+  initial begin $display("Hello World"); $finish; end
+endmodule
 ```
 
 </v-click>
-
 <v-click>
 
-- powershell
-
-```powershell
-$Env:http_proxy="http://127.0.0.1:7897";$Env:https_proxy="http://127.0.0.1:7897"
-```
-
-</v-click>
-
-<v-click>
-
-- GUI(Windows 10/11)
-
-1. Open `Settings` -> `Network & Internet` -> `Proxy`
-2. Set `Manual proxy setup` to `On`
-3. Fill in the `Address` and `Port` with `localhost` and `7897` respectively
-
-
-</v-click>
-
----
-
-# Vmware
-
-assume you are using NAT mode and you enabled `allow LAN` in your proxy software.
-
-<v-click>
- 
-1. check your ifconfig/ipconfig result of `vmnet8`
-
-```
-vmnet8: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 192.168.18.1  netmask 255.255.255.0  broadcast 192.168.18.255
-        inet6 fe80::250:56ff:fec0:8  prefixlen 64  scopeid 0x20<link>
-        ether 00:50:56:c0:00:08  txqueuelen 1000  (Ethernet)
-        RX packets 0  bytes 0 (0.0 B)
-        RX errors 0  dropped 0  overruns 0  frame 0
-        TX packets 103  bytes 0 (0.0 B)
-        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-```
-
-</v-click>
-
-<v-click>
-
-
-2. set proxy in your vm
-
-```bash
-export http_proxy="http://192.168.18.1:7897"
-export https_proxy="http://192.168.18.1:7897"
-export socks_proxy="http://192.168.18.1:7897"
-```
-
-</v-click>
-
-
----
-
-# VirtualBox
-
-<v-click>
-
-1. set your network adapter to `Host-only Adapter`
-
-</v-click><v-click>
-
-2. an interface named `vboxnet0` or other will be created
-
-
-</v-click><v-click>
-
-
-3. ifconfig/ipconfig to check the ip address
-
-```bash
-vboxnet0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 192.168.56.1  netmask 255.255.255.0  broadcast 192.168.56.255
-        inet6 fe80::800:27ff:fe00:0  prefixlen 64  scopeid 0x20<link>
-        ether 0a:00:27:00:00:00  txqueuelen 1000  (Ethernet)
-        RX packets 0  bytes 0 (0.0 B)
-        RX errors 0  dropped 0  overruns 0  frame 0
-        TX packets 33  bytes 3289 (3.2 KiB)
-        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-```
-
-</v-click><v-click>
-
-4. set proxy in your vm, in this way you can also solve the problem of not able to access the internet in your vm
-
-```bash
-export http_proxy="http://192.168.56.1:7897"
-export https_proxy="http://192.168.56.1:7897"
-export socks_proxy="http://192.168.56.1:7897"
-```
-
-</v-click>
-
----
-
-# browsers
-
-<v-click>
-
-- Chrome/Edge/Firefox
-
-1. Open `Settings` 
-2. Search `Proxy` and click `Open your computer's proxy settings` (Chrome/Edge), Firefox can be configured directly
-3. Fill in the `Address` and `Port` with `localhost` and `7897` respectively
-
-</v-click><v-click>
-
-- Plugin (switchyomega, etc.)
-
-1. Install the plugin
-2. Options
-3. New profile (proxy profile, enter your profile name)
-4. select DIRECT -> HTTP
-5. Fill in the `Address` and `Port` with `localhost` and `7897` respectively
-6. Apply changes
-
-</v-click>
-
----
-
-# vscode/code - OSS/vscodium
-
-- default use system proxy
-
-Settings -> search `proxy` -> fill in `http://localhost:7897`
-
-[![https://imgur.com/Pr8K8eH.png](https://imgur.com/Pr8K8eH.png)](https://imgur.com/Pr8K8eH.png)
-
----
-
-# git
-
-<v-click>
-
-```bash
-git config --global http.proxy http://localhost:7897
-git config --global https.proxy https://localhost:7897
-
-git config --global --unset http.proxy
-git config --global --unset https.proxy
-```
-
-</v-click>
-
----
-
-# ssh
-
-<v-click>
-
-```bash
-Host github.com
-    HostName ssh.github.com
-    #HostName github.com
-    port 443
-    IdentityFile ~/.ssh/id_rsa
-    User git
-    ProxyCommand nc -v -x 127.0.0.1:7897 %h %p
-```
-
-</v-click>
-
----
-
-# curl/wget  
-
-default to use `http_proxy` and `https_proxy` environment variables, otherwise
-
-<v-click>
-
-```bash
-curl -x localhost:7897 http://example.com
-wget -e http_proxy=localhost:7897 http://example.com
-```
-
-</v-click>
-
----
-
-# apt/yum/pacman
-
-changing the mirror is a better choice (STFW)
-
-
-<v-click>
-
-```bash
-/etc/apt/apt.conf.d/proxy.conf
-Acquire::http::Proxy "http://proxy-IP-address:proxyport/";
-Acquire::http::Proxy "http://proxy-IP-address:proxyport/";
-```
-
-</v-click><v-click>
-```bash
-/etc/yum.conf
-proxy=http://localhost:7897
-```
-</v-click><v-click>
-
-```bash
-# delete either of the following lines, and configure the proxy in curl/wget
-# setting http_proxy and https_proxy environment variables is also a good choice
-
-/etc/pacman.conf
-#XferCommand = /usr/bin/curl -L -C - -f -o %o %u
-#XferCommand = /usr/bin/wget --passive-ftp -c -O %o %u
-```
-
-</v-click>
----
-
-# docker
-
-- dockerd
-
-<v-click>
-
-```bash
-sudo mkdir -p /etc/systemd/system/docker.service.d
-sudo touch /etc/systemd/system/docker.service.d/proxy.conf
-
-[Service]
-Environment="HTTP_PROXY=http://localhost:7897/"
-Environment="HTTPS_PROXY=http://localhost:7897/"
-Environment="NO_PROXY=localhost,127.0.0.1,.example.com"
-
-sudo systemctl daemon-reload
-sudo systemctl restart docker
-```
-
-</v-click>
-
----
-
-- container
-
-<v-click>
-```bash
-~/.docker/config.json
-
-{
- "proxies":
- {
-   "default":
-   {
-     "httpProxy": "http://localhost:7897",
-     "httpsProxy": "http://localhost:7897",
-     "noProxy": "localhost,127.0.0.1,.example.com"
-   }
- }
+- main.cpp
+
+```cpp
+#include "Vtop.h"
+#include "verilated.h"
+int main(int argc, char** argv) {
+  VerilatedContext* contextp = new VerilatedContext;
+  contextp->commandArgs(argc, argv);
+  Vtop* top = new Vour{contextp};
+  while (!contextp->gotFinish()) { top->eval(); }
+  delete top;
+  delete contextp;
+  return 0;
 }
 ```
 
 </v-click>
 
-- build
-
-<v-click>
-```bash
-docker build . \
-    --build-arg "HTTP_PROXY=http://localhost:7897/" \
-    --build-arg "HTTPS_PROXY=http://localhost:7897/" \
-    --build-arg "NO_PROXY=localhost,127.0.0.1,.example.com" \
-    -t your/image:tag
-```
-
-</v-click>
 ---
 
-# pip
+# first run
 
-<v-click>
-```bash
-pip install --proxy http://localhost:7897 package
-pip install --proxy https://localhost:7897 package
+
+```sh
+verilator --cc --exe --build -j 0 -Wall main.cpp top.v
 ```
-
-</v-click>
-<v-click>
-or change the mirror to a domestic one
-
-```bash
-~/.pip/pip.conf
-
-[global]
-index-url = https://pypi.tuna.tsinghua.edu.cn/simple
-[install]
-trusted-host = https://pypi.tuna.tsinghua.edu.cn
-```
-
-</v-click>
----
-
-# conda
-
-<v-click>
-```bash
-~/.condarc
-
-channels:
-  - defaults
-show_channel_urls: true
-default_channels:
-  - https://mirrors.bfsu.edu.cn/anaconda/pkgs/main
-  - https://mirrors.bfsu.edu.cn/anaconda/pkgs/r
-  - https://mirrors.bfsu.edu.cn/anaconda/pkgs/msys2
-custom_channels:
-  conda-forge: https://mirrors.bfsu.edu.cn/anaconda/cloud
-  msys2: https://mirrors.bfsu.edu.cn/anaconda/cloud
-  bioconda: https://mirrors.bfsu.edu.cn/anaconda/cloud
-  menpo: https://mirrors.bfsu.edu.cn/anaconda/cloud
-  pytorch: https://mirrors.bfsu.edu.cn/anaconda/cloud
-  pytorch-lts: https://mirrors.bfsu.edu.cn/anaconda/cloud
-  simpleitk: https://mirrors.bfsu.edu.cn/anaconda/cloud
-```
-
-</v-click>
----
-
-# npm
 
 <v-click>
 
-```
-# 设置代理
-npm config set proxy http://127.0.0.1:7897
-npm config set https-proxy http://127.0.0.1:7897
-# 取消代理
-npm config delete proxy
-npm config delete https-proxy
-```
-
-</v-click>
-<v-click>
-
-or
-
-```bash
-~/.npmrc
-
-proxy=http://127.0.0.1:7897
-https-proxy=http://127.0.0.1:7897
-registry=https://registry.npmmirror.com/
-```
-
-</v-click>
----
-
-# proxychains4
-
-<v-click>
-
-```bash
-# /etc/proxychains.conf
-
-[ProxyList]
-# add proxy here ...
-# meanwile
-# defaults set to "tor"
-# socks4 	127.0.0.1 9050
-http 127.0.0.1 7897
-socks5 127.0.0.1 7897
-```
-
-```bash
-proxychains4 <your command>
-```
+[![https://imgur.com/aO1lZn6.png](https://imgur.com/aO1lZn6.png)](https://imgur.com/aO1lZn6.png)
 
 </v-click>
 
 ---
 
+# and gate
+
+- top.v
+
+```verilog
+module top(
+  input a,
+  input b,
+  output c
+);
+  assign c = a & b;
+endmodule
+```
+
 <v-click>
 
-a very fresh example: I want to use `xfce4-screenshooter` to upload a screenshot and paste in my markdown. I found that the upload server is blocked by the GFW, so I use proxychains4 to force it.
+- main.cpp
 
-[![https://imgur.com/Qlz8jrV.png](https://imgur.com/Qlz8jrV.png)](https://imgur.com/Qlz8jrV.png)
+```cpp
+#include "Vtop.h"
+#include "verilated.h"
+#include "verilated_vcd_c.h"
+#define TIME_LIMIT 100
+int main(int argc, char** argv) {
+  VerilatedContext* contextp = new VerilatedContext;
+  contextp->commandArgs(argc, argv);
+  Vtop* top = new Vtop{contextp};
+  VerilatedVcdC* tfp = new VerilatedVcdC; // class for tackle vcd 
+  Verilated::traceEverOn(true);
+  top->trace(tfp, TIME_LIMIT - 1);        // trace the signal
+  tfp->open("trace.vcd");
+``` 
+
+</v-click>
+
+---
+
+```cpp
+  while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
+    /* your variable here */ 
+    top->a = rand() % 2; // generate input
+    top->b = rand() % 2;
+    top->eval();         // run the circuit 
+    tfp->dump(contextp->time()); // save the result
+    contextp->timeInc(1); // increase a clock cycle
+  }
+
+  tfp->close();
+  delete top;
+  delete contextp;
+  return 0;
+}
+```
+
+- Makefile
+
+<v-click>
+
+```make
+clean:
+	rm -rf obj_dir
+build:
+	verilator --cc --exe --trace --build -j 0 -Wall main.cpp top.v
+run: build
+	./obj_dir/Vtop
+```
+</v-click>
+
+---
+
+# second run (with signals)
+
+```sh
+make run 
+gtkwave ./trace.vcd
+```
+
+<v-click>
+
+[![https://imgur.com/Q91itzn.png](https://imgur.com/Q91itzn.png)](https://imgur.com/Q91itzn.png)
+
+</v-click>
+
+---
+
+# full adder
+
+- top.v
+
+```verilog
+module top(
+  input a, b, carry_in
+  output sum, carry_out
+);
+  assign sum = a ^ b ^ carry_in;
+  assign carry_out = (a & b) | (a & carry_in) | (b & carry_in);
+endmodule
+```
+
+OR
+
+<v-click>
+
+```verilog
+module top(
+  input a, b, carry_in
+  output sum, carry_out
+);
+  assign {carry_out, sum} = a + b + carry_in; // {} and ',' mean concat
+endmodule
+```
+
+</v-click>
+
+<v-click>
+
+The former is more like structural modeling, while dataflow modeling for the latter. 
+
+</v-click>
+
+---
+
+# multi-bit addr
+
+```verilog
+module full_addr(
+  input a, b, carry_in,
+  output sum, carry_out
+);
+  assign sum = a ^ b ^ carry_in;
+  assign carry_out = (a & b) | (a & carry_in) | (b & carry_in);
+endmodule
+
+module top(
+  input [7:0] a, b,
+  input carry_in,
+  output [7:0] sum,
+  output carry_out
+);
+  wire [6:0] carry_tmp;
+  full_addr fa0(a[0], b[0], carry_in, sum[0], carry_tmp[0]);
+  full_addr fa1(a[1], b[1], carry_tmp[0], sum[1], carry_tmp[1]);
+  full_addr fa2(a[2], b[2], carry_tmp[1], sum[2], carry_tmp[2]);
+  full_addr fa3(a[3], b[3], carry_tmp[2], sum[3], carry_tmp[3]);
+  full_addr fa4(a[4], b[4], carry_tmp[3], sum[4], carry_tmp[4]);
+  full_addr fa5(a[5], b[5], carry_tmp[4], sum[5], carry_tmp[5]);
+  full_addr fa6(a[6], b[6], carry_tmp[5], sum[6], carry_tmp[6]);
+  full_addr fa7(a[7], b[7], carry_tmp[6], sum[7], carry_out);
+endmodule
+```
+
+---
+
+- dataflow modeling
+
+```verilog
+module top(
+  input [7:0] a, b,
+  input carry_in,
+  output [7:0] sum,
+  output carry_out
+);
+  assign {carry_out, sum} = a + b + {7'b0, carry_in};
+endmodule
+```
+
+<v-click>
+
+to simplify the procedure, I'll use dataflow modeling more to save the space
+
+</v-click>
+
+<v-click>
+
+- main.cpp
+
+```cpp
+while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
+  /* your variable here */ 
+  top->a = rand() % 256; // can directly tranfer an integer to signals
+  top->b = rand() % 256;
+  top->carry_in = rand() % 2;
+  top->eval();
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
+}
+```
+
+</v-click>
+
+---
+
+# 3rd run
+
+- 0x67 + 0xc6 + 1 = 0x12e
+
+[![https://imgur.com/UJhLHKQ.png](https://imgur.com/UJhLHKQ.png)](https://imgur.com/UJhLHKQ.png)
+
+---
+
+# counter
+
+```verilog
+module top(
+  input clk,
+  output [3:0] tick
+);
+  reg [3:0] saved_tick; // reg can keep its state during different clocks
+  always @(posedge clk) begin
+    // notice the symbol "<=", it is like a delayed assignment by one clock cycle
+    saved_tick <= saved_tick + 1; 
+  end  
+  assign tick = saved_tick;
+endmodule
+```
+
+<v-click>
+
+```cpp
+while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
+  top->clk = 1; top->eval(); // because it is initially 1, so no posedge
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
+
+  top->clk = 0; top->eval();
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
+  // two clock cycles later, the counter will increase 1
+}
+```
+
+</v-click>
+
+---
+
+# 4th run
+
+- as you can see, after 32 clock cycles, it returned to initial state
+
+[![https://imgur.com/YOEY6bM.png](https://imgur.com/YOEY6bM.png)](https://imgur.com/YOEY6bM.png)
+
+--- 
+
+# OK, we used four pieces of code to reviewed "digital circuit design" course. 
+
+# So, lets do something more interesting!!! 
+
+---
+
+# instruction cycle
+
+- Let's implement a finite-state machine with one 2-bit reg, with totally 4 instructions!
+
+```cpp
+int pseudo_mem[16] = {
+  // 0b00: mem = 0
+  // 0b01: mem = 1
+  // 0b10: mem = mem - 1
+  // 0b11: mem = mem + 1
+  1, 3, 0, 2
+};
+```
+
+<v-click>
+
+```cpp
+while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
+  /* your variable here */ 
+  top->clk = 0;
+  top->inst = pseudo_mem[contextp->time() / 2] % 4; // FETCH
+  top->eval();
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
+
+  top->clk = 1;
+  top->eval();
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
+}
+```
+
+</v-click>
+
+---
+
+- Here is the implement of reading/writing a register
+
+<v-click>
+
+```verilog
+module mem(
+  input clk,
+  input [1:0] data_in,
+  output[1:0] data_out
+);
+  reg [1:0] mem;    // acutual register like  rax,rbx,... etc. in AMD64
+  assign data_out = mem;
+  always @(posedge clk) begin
+    mem <= data_in;
+  end
+endmodule
+```
+
+</v-click>
+
+<v-click>
+
+- To simplify, we suppose every instruction we need to write something into the register, so we omit the `write_enable` signal.
+
+</v-click>
+
+<v-click>
+
+- other modules can always read `mem` from `data_out`, but can only write into register when a positive edge of clock occurs.
+
+</v-click>
+
+---
+
+- Then let's look at the ALU (arithmetic logic unit) part
+
+<v-click>
+
+```verilog
+module alu(
+  input op,
+  input [1:0] data_in,
+  output[1:0] data_out
+);
+  assign data_out = op ? data_in + 1 : data_in - 1;    
+endmodule
+```
+
+</v-click>
+
+<v-click>
+
+- Mostly the ALU part is designed by combinational logic circuit.
+
+</v-click>
+
+<v-click>
+
+- If you still remeber the opcode I previously provided, you can find that `0b10` and `0b11` correspond with the content in ALU.
+
+```
+  // 0b00: mem = 0
+  // 0b01: mem = 1
+  // 0b10: mem = mem - 1
+  // 0b11: mem = mem + 1
+```
+
+</v-click>
+
+<v-click>
+
+- Before going to the next page, can you try to figure out what the top module will be like?
 
 </v-click>
 
 --- 
 
-# BELOW ARE F**KING JAVA SERIES, it is hard to configure the proxy in java, I mostly use mirrors.
-
----
-
-# gradle
-
+- OK, let me show the possible answer:
 
 <v-click>
 
-gradle.properties
+```verilog
+module top(
+  input clk,
+  input[1:0] inst
+);
+  wire [1:0] alu_out, pre_reg, post_reg;
 
-```groovy
-systemProp.http.proxyHost='localhost'
-systemProp.http.proxyPort='7897'
-# 过滤不使用代理的域名
-systemProp.http.nonProxyHosts=*.example.com
-systemProp.https.proxyHost='localhost'
-systemProp.https.proxyPort='7897'
-# 过滤不使用代理的域名
-systemProp.https.nonProxyHosts=*.example.com
-```
-
-</v-click>
----
-
-# maven
-
-I choose to change the mirror to a domestic one
-
-<v-click>
-
-```bash
-~/.m2/settings.xml
-<settings>
-    <mirrors>
-        <mirror>
-          <id>centralhttps</id>
-          <mirrorOf>central</mirrorOf>
-          <name>Maven central https</name>
-          <url>http://insecure.repo1.maven.org/maven2/</url>
-        </mirror>
-      </mirrors>
-      </settings>
+  // READ && WRITE BACK
+  mem top_mem(clk, post_reg, pre_reg);
+  // EXECUTE
+  alu top_alu(inst[0], pre_reg, alu_out);
+  // DECODE
+  assign post_reg = inst[1] ? alu_out : {1'b0, inst[0]};
+endmodule
 ```
 
 </v-click>
 
----
-
-# sbt
-
 <v-click>
 
-```bash
-~/.sbt/repositories
-
-
-[repositories]
-local
-aliyun: https://maven.aliyun.com/repository/central/
-sbt-plugin-repo: https://repo.scala-sbt.org/scalasbt/sbt-plugin-releases, \
-[organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
-
-
-
-sudo vi /usr/share/sbt/conf/sbtopts
--Dsbt.override.build.repos=true
-```
+- first, the `top` module FETCH the instruction from `main.cpp`.
 
 </v-click>
----
-
-# coursier
 
 <v-click>
 
-```bash
-export COURSIER_REPOSITORIES= \
-"https://maven.aliyun.com/repository/public|https://maven.scijava.org/content/repositories/public"
-
-# chisel installation modification
-./coursier bootstrap -i user -I user:sh.almond:scala-kernel-api_$SCALA_VERSION:$ALMOND_VERSION  \
-sh.almond:scala-kernel_$SCALA_VERSION:$ALMOND_VERSION     --sources --default=true     -o almond
-
-```
+- second, read the reg value from `top_mem`.
 
 </v-click>
----
-
-# mill 
 
 <v-click>
 
-doesn't support proxy, use proxychains4 to force it
+- third, DECODE `inst[1]` to decide whether the opcode needs calculation.
 
-```bash
-alias mill='proxychains4 mill'
-```
+</v-click>
+
+<v-click>
+
+- fourth, EXECUTE (i.e. posedge) to write the final value back into reg.
 
 </v-click>
 
 ---
 
-# References
+# 5th run
 
-- https://doc.yoouu.cn/basic/proxy.html
-- https://cloud-atlas.readthedocs.io/zh-cn/latest/linux/arch_linux/pacman_proxy.html
-- https://pshizhsysu.gitbook.io/linux/yum/wei-yum-yuan-pei-zhi-dai-li
-- https://zhuanlan.zhihu.com/p/629584549
-- https://cloud.tencent.com/developer/article/1806455
-- https://segmentfault.com/a/1190000021817234
-- https://blog.csdn.net/weixin_43681766/article/details/122889519
-- https://zhuanlan.zhihu.com/p/474087997
+```c
+mem = 1  // 1
+mem += 1 // 3
+mem = 0  // 0
+mem -= 1 // 2
+``` 
+[![https://imgur.com/hzXkHsY.png](https://imgur.com/hzXkHsY.png)](https://imgur.com/hzXkHsY.png)
+
+---
+
+# final challenge: int64 to double
+
+- i.e. `cvtsi2sd` in x86 asm
+
+<v-click>
+
+- IEEE 754 standard: 1-bit sign, 11-bit exponent, 52-bit mantissa
+
+</v-click>
+
+<v-click>
+
+- e.g.: $(100111001)_2$'s exponent is $8$,
+- first, it is a positive integer, so the sign-bit is `0`,
+- we add $8$ into $1023$ to make the exponent bits,
+- cut off the MSB and get the mantissa.
+
+</v-click>
+
+<v-click>
+
+So, the final result is:
+
+`0 10000000111 001110010000...0`
+
+</v-click>
+
+<v-click>
+
+but... we still have a problem,
+
+</v-click>
+
+---
+
+## rounding
+
+<v-click>
+
+supoose we have $(11110000111100001111000011110000111100001111000010101010)_2$
+
+</v-click>
+
+<v-click>
+
+after counting for 53 bits, we find:
+
+`11110000111100001111000011110000111100001111000010101` are accurate but the last `010` bits are rounded.
+
+</v-click>
+
+<v-click>
+
+according to the round rule, $(0.010)_2$ is smaller then $(0.1)_2$, so we round down this. 
+
+</v-click>
+
+<v-click>
+
+but what will happen if the omitted bits just euqal to $(0.1)_2$?
+
+Please guess a little bit.
+
+</v-click>
+
+<v-click>
+
+The answer is Banker's Rounding: Round to nearest, ties to even.
+
+Do you remember the first lecture in 大学物理实验 course？ That's it.
+
+</v-click>
+
+---
+
+## Banker's Rounding
+
+- Suppose we have $(11110000111100001111000011110000111100001111000010100100)_2$, the accurate bits are `11110000111100001111000011110000111100001111000010100` and omitted bits are `100`, the latter is just equal to $(0.1)_2$.
+
+<v-click>
+
+- if we round it up, the LSB will be `1`, otherwise the LSB will be `0`, so we should round it down.
+
+</v-click>
+
+<v-click>
+
+- Another example, we have $(11110000111100001111000011110000111100001111000010101100)_2$, the accurate bits are `11110000111100001111000011110000111100001111000010101` and omitted bits are still `100`.
+
+</v-click>
+
+<v-click>
+
+- if we round it up, the LSB will be `0`, otherwise the LSB will be `1`, so we should round it up.
+
+- That's it. Let's take a look at its implementation.
+
+</v-click>
+
+--- 
+
+## implementation
+
+- calc_significant_bit
+
+```verilog
+module calc_significant_bit (
+  input [63:0] a,
+  output [5:0] b
+);
+  always @* begin
+    begin
+      for (int i = 63; i >= 0; i--) begin
+        if (a[i]) begin
+          b = i[5:0];
+          break;
+        end
+      end
+    end
+  end
+endmodule
+```
+
+<v-click>
+
+- This is a typical example of **behavioral modeling**, it is easy for us to understand the procedure. But it is hard for us to debug, and for EDA tools to synthesize. What's more, the performance will drop, **especially when you want to write every complex module in a programmer's way, not thinking of we're acutally building the hardware.**
+
+</v-click>
+
+---
+
+- calc_mantissa
+
+```verilog
+module mantissa (
+  input [63:0] a,
+  input [5:0] exp,
+  output [51:0] b
+);
+  always @* begin
+    if (exp <= 52) begin
+      b[51:51-exp+1] = a[exp-1:0];
+    end else begin
+      b[51:0] = a[exp-1:exp-52];
+      // Banker's rounding
+      if (a[exp-53] == 1 && (exp == 53 || a[exp-54:0] == 0)) begin
+        b = b + {51'b0, b[0]};
+      end else begin
+        b = b + {51'b0, a[exp-53]};
+      end
+    end
+  end
+endmodule
+```
+
+<v-click>
+
+- Of course, verilog itself doesn't support slicing with dynamic variables, can you come up with the solution?
+
+</v-click>
+
+---
+
+- top
+
+```verilog
+module top (
+  input [63:0] a,
+  output [63:0] b
+);
+  wire sign;
+  wire [5:0] exp;
+  wire [10:0] fixed_exp;
+  wire [51:0] mant;
+  wire [63:0] result;
+  calc_significant_bit calc_significant_bit_0 (a, exp);
+  mantissa mantissa_0 (a, exp, mant);
+  assign sign = a[63];
+  assign fixed_exp = {5'b0, exp} + 1023;
+  assign result = {sign, fixed_exp, mant};
+  assign b = result;
+endmodule
+```
+
+
+<v-click>
+
+- how to transfer `int64` to double numbers from memory directly without conversion? 
+
+- Hint: `union`
+
+</v-click>
+
+
+<v-click>
+
+- One last question, this pseudocode only handles positive integers, what about negatives?
+
+</v-click>
