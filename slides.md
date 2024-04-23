@@ -1,707 +1,330 @@
-# Verilog: A Practice Approach
+# 如何7天写出一篇会议论文
 
 junyu33
 
----
-
-# official website
-
-- https://www.veripool.org/verilator/
-- https://verilator.org
-
 <v-click>
 
-# installation
-
-- verilator
-
-```sh
-sudo apt-get install verilator   # On Debian or Ubuntu
-```
-
-- gtkwave
-
-```sh
-sudo apt-get install gtkwave   # On Debian or Ubuntu
-```
+（当然是在实验做完的情况下）
 
 </v-click>
 
 ---
 
-# hello world
-
-```sh
-mkdir playground
-touch top.v main.cpp
-```
+事情是这样的：
 
 <v-click>
 
-- top.v
+我大概从这学期开始完成我工作的实验，每天早上十点到靶场，晚上十点回寝室。除了周二周四周六会在晚上八九点跑步三公里外，其余时间基本上就是：
 
-```verilog
-module top;
-  initial begin $display("Hello World"); $finish; end
-endmodule
-```
+一台盖着的笔记本、一台显示器，以及——几十份不可维护的、数千行的代码和祖传的数据集。
+
+![](https://imgur.com/a0ukOMH.png)
 
 </v-click>
+
 <v-click>
 
-- main.cpp
+在~~起早贪黑，废寝忘食~~地努力下，我成功在3月底做完了两个比较大的实验，结果也还尚可，有了发论文的实验基础。
 
-```cpp
-#include "Vtop.h"
-#include "verilated.h"
-int main(int argc, char** argv) {
-  VerilatedContext* contextp = new VerilatedContext;
-  contextp->commandArgs(argc, argv);
-  Vtop* top = new Vour{contextp};
-  while (!contextp->gotFinish()) { top->eval(); }
-  delete top;
-  delete contextp;
-  return 0;
-}
-```
+于是，正题开始了
 
 </v-click>
 
 ---
 
-# first run
+## 得知会议
 
-
-```sh
-verilator --cc --exe --build -j 0 -Wall main.cpp top.v
-```
+我本来是刚刚把实验做完就让导师给我找一下适合投的会议，我说我想在四月份投稿，结果过了一周（也就是4月9号早上），他才给我找了 RAID[^2] (CCF-B)。
 
 <v-click>
 
-[![https://imgur.com/aO1lZn6.png](https://imgur.com/aO1lZn6.png)](https://imgur.com/aO1lZn6.png)
+上会伴一看[^1]，这个会议的ddl还有10个小时？点进去一看，哦，主办方把ddl从4月9号延期了一周到北京时间4月16号晚上8点，我松了一口气。
+
+我当时一脸问号——导师啊，但凡你要是提前一周告诉我要投这个会议，我的现状就不会像今天这样狼狈。
+
+</v-click>
+
+<v-click>
+
+结果导师说，你先花个两天把论文写出来，然后我们再改。
+
+。。。。。。
+
+</v-click>
+
+[^1]: https://myhuiban.com/conferences/host
+[^2]: https://raid2024.github.io/
+
+---
+
+## 寻找环境
+
+不巧的是，由于靶场那段时间要进行装修，我在靶场的工位不保，得另寻它处。
+
+<v-click>
+
+寝室肯定是不行的，虽然亲爱的毛主席为了磨练意志要到闹市学习，然而他并不需要为一个七天的ddl而奋斗。
+
+图书馆的话我有所考虑，但是相比之下高凯老师的实验室会更好些，因为运气好的的话可以问身边的学长学姐一些问题。
+
+</v-click>
+
+<v-click>
+
+于是我在高凯老师的同意下，在当天下午把家当全搬进了实验室的最后一排。
+
+网安楼虽然不大，但已经能安放一张平静的书桌了。
+
+</v-click>
+
+<v-click>
+
+此时我打开投稿网站，确认要求是 double column 的 ACM sigconf style，于是我熟练地打开了 overleaf[^1] 找到了对应的模板。
+
+</v-click>
+
+<v-click>
+
+然后我又意外地发现，由于去年在NUS写过project，我的overleaf账号仍然绑定着NUS的临时邮箱，成为了overleaf的会员。因此，团队协作overleaf写论文是可行的。
+
+</v-click>
+
+[^1]: https://www.overleaf.com/
+
+---
+
+## 确定idea没人做过
+
+由于整个三月份我在兢兢业业地做着实验，只是因为凭着导师“这个工作以前没人做过”这句话，并没有进行实地的文献搜集。当我想找些人手和我一起写论文时，李梓勤同学就问我这个工作应该有人做过吧，我说我不知道，但导师说没有，我也就没想那么多了。
+
+<v-click>
+
+Ziqin Li: 。。。。。。
+
+Ziqin Li: 你今天赶紧去搜一下有没有相关的工作——immediately！！
+
+</v-click>
+
+<v-click>
+
+我其实内心也有点后怕，要是这个工作真被做过，那我不就成纯纯大冤种了吗，白花了一个月宝贵的时间。
+
+于是，我在高老师的实验室问了同桌一个问题：如何去找相关的工作？
+
+</v-click>
+
+<v-click>
+
+那个学长问我你的导师有没有给你发过相关的工作，哪怕给一篇也行，我说我有学姐的一篇《川大学报》。
+
+学长说那行，你把她的参考文献里面跟你工作最相近的那篇文章拿出来，放到 connected papers[^1] 里面一查，再看一下那里面相关的工作，就基本上能确认你的工作有没有被做过了。
+
+</v-click>
+
+<v-click>
+
+事实证明导师没有骗我，我的方向确实只有一两篇paper做过，方法也不同，而且发的会议都不在CCF里面。
+
+</v-click>
+
+[^1]: https://www.connectedpapers.com/
+
+---
+
+## 开写
+
+所以，先写什么呢？
+
+<v-click>
+
+按照兰晓老师的说法，建议先写background、methodology和evaluation，然后再进行discussion和related work，再之写intro和conclusion，最后补上abstract。
+
+</v-click>
+
+<v-click>
+
+我觉得她的说法很有道理，毕竟一个现在才补related work的ddl人，background肯定是最好写的。
+
+因为是现有的基础知识，所以用chatgpt的话应该没什么大问题，然后再加点与我自己工作的关系和相关的feature应该就可以。
+
+</v-click>
+
+<v-click>
+
+于是，我花了周二一下午就把background给写完了。
 
 </v-click>
 
 ---
 
-# and gate
-
-- top.v
-
-```verilog
-module top(
-  input a,
-  input b,
-  output c
-);
-  assign c = a & b;
-endmodule
-```
+接着是methodology，由于这部分就是自己的思路了，因此让chatgpt愉快地帮我生成内容的时光到此结束了。
 
 <v-click>
 
-- main.cpp
+导师说methodology最好有一个项目的整体架构图，我灵机一动，之前信安赛做ppt的那位同学画的那个架构图似乎很不错。于是我让他把架构图的中文改成英文，贴上去一看，挺match的。
 
-```cpp
-#include "Vtop.h"
-#include "verilated.h"
-#include "verilated_vcd_c.h"
-#define TIME_LIMIT 100
-int main(int argc, char** argv) {
-  VerilatedContext* contextp = new VerilatedContext;
-  contextp->commandArgs(argc, argv);
-  Vtop* top = new Vtop{contextp};
-  VerilatedVcdC* tfp = new VerilatedVcdC; // class for tackle vcd 
-  Verilated::traceEverOn(true);
-  top->trace(tfp, TIME_LIMIT - 1);        // trace the signal
-  tfp->open("trace.vcd");
-``` 
+</v-click>
+
+<v-click>
+
+然后methodology的话我有很多算法的部分，然而 LaTeX 只有在用 markdown 写博客的时候零零星星敲几个公式时会用到，因此这方面还是得求助chatgpt给我生成一个算法的模板，chatgpt用了algorithm2e，感觉效果还行。我多看了几个例子就掌握了它的大致用法。
+
+~~不得不说算法真是撑篇幅的有力工具。~~
+
+</v-click>
+
+<v-click>
+
+然后具体的文字叙述就只能靠自己对工作的细节回忆了，这方面确实比较痛苦，直到晚上实验室关门时我才写完了我工作的一半内容。
+
+直到周三结束，我才完成了methodology这一部分——所以两天是写不完一篇paper滴！
 
 </v-click>
 
 ---
 
-```cpp
-  while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
-    /* your variable here */ 
-    top->a = rand() % 2; // generate input
-    top->b = rand() % 2;
-    top->eval();         // run the circuit 
-    tfp->dump(contextp->time()); // save the result
-    contextp->timeInc(1); // increase a clock cycle
-  }
+## 补做实验
 
-  tfp->close();
-  delete top;
-  delete contextp;
-  return 0;
-}
-```
-
-- Makefile
+先前李梓勤同学也跟我argue说你的论文还缺少两个点，一个是motivation（也就是你做这个工作的意义何在），另一个就是实验太不充分了。他说如果你不做性能实验，审稿人就会怀疑你的工作耗时太长，想要刻意隐瞒（效率低）这件事情。
 
 <v-click>
 
-```make
-clean:
-	rm -rf obj_dir
-build:
-	verilator --cc --exe --trace --build -j 0 -Wall main.cpp top.v
-run: build
-	./obj_dir/Vtop
-```
+我当时想了想，性能实验确实不太难做，在我一边构思论文措辞时一边跑实验是完全可行的。另外，由于相关工作大多数都是用了机器学习相关的方法，缺乏可解释性。因此我也补做了一个简单的可解释性实验。
+
 </v-click>
+
+<v-click>
+
+画图的话也只能靠 chatgpt，我大概给它描述一下怎么给数据分组、然后画条形图还是折线图、颜色、图例、注释等等，然后在它给的代码基础上魔改，感觉确实比读 matplotlib 的文档快一些。
+
+</v-click>
+
+<v-click>
+
+在做实验的同时，我把我的工作介绍给了一些关系比较好的同学，求他们帮我写一下 related work 和 intro。我大概在周五的时候补完了我能补的实验并写好了实验部分。周六写discussion的时候有点颓（其实可能是没啥思路），我就直接把related work介绍自己工作的优点的那一部分移过去了。
+
+然后那周日催一催那位同学把 related work 和 intro 写了，然后支棱了一个下午晚上补全了conclusion和abstract，用overleaf copilot[^1]修改了一下语病，这篇论文的初稿就算完成了。
+
+</v-click>
+
+[^1]: https://www.overleafcopilot.com/
 
 ---
 
-# second run (with signals)
+## 修改的噩梦
 
-```sh
-make run 
-gtkwave ./trace.vcd
-```
+由于周日晚上我把论文初稿发在了我临时组建的写论文的群里，导师在第二天提出了一些论文的美化意见：例如说图的风格保持统一、附录的内容充实一点（最好带几张图）、论文的background部分最好不要使用定义性的语言等等，反正又忙活了一个下午加一个晚上才搞定这些修改。
 
 <v-click>
 
-[![https://imgur.com/Q91itzn.png](https://imgur.com/Q91itzn.png)](https://imgur.com/Q91itzn.png)
+不仅如此，这个时候 Ziqin Li 又突然冒出来说：
 
-</v-click>
-
----
-
-# full adder
-
-- top.v
-
-```verilog
-module top(
-  input a, b, carry_in
-  output sum, carry_out
-);
-  assign sum = a ^ b ^ carry_in;
-  assign carry_out = (a & b) | (a & carry_in) | (b & carry_in);
-endmodule
-```
-
-OR
-
-<v-click>
-
-```verilog
-module top(
-  input a, b, carry_in
-  output sum, carry_out
-);
-  assign {carry_out, sum} = a + b + carry_in; // {} and ',' mean concat
-endmodule
-```
+- 你论文怎么没有motivation？
+- 你的实验和related work怎么这么短？而且内容与你的工作一点关系都没有？
+- 还有 discussion 不是你这么写的！
 
 </v-click>
 
 <v-click>
 
-The former is more like structural modeling, while dataflow modeling for the latter. 
+请求我当时心里的阴影面积——
+
+</v-click>
+
+<v-click>
+
+看来 related work 还是得自己亲手操刀啊。。。。。。
+
+</v-click>
+
+<v-click>
+
+没办法，writing的问题并不是我一个人能解决的，只能和他约好ddl当天下午和晚上一起改论文——太刺激了！
 
 </v-click>
 
 ---
 
-# multi-bit addr
-
-```verilog
-module full_addr(
-  input a, b, carry_in,
-  output sum, carry_out
-);
-  assign sum = a ^ b ^ carry_in;
-  assign carry_out = (a & b) | (a & carry_in) | (b & carry_in);
-endmodule
-
-module top(
-  input [7:0] a, b,
-  input carry_in,
-  output [7:0] sum,
-  output carry_out
-);
-  wire [6:0] carry_tmp;
-  full_addr fa0(a[0], b[0], carry_in, sum[0], carry_tmp[0]);
-  full_addr fa1(a[1], b[1], carry_tmp[0], sum[1], carry_tmp[1]);
-  full_addr fa2(a[2], b[2], carry_tmp[1], sum[2], carry_tmp[2]);
-  full_addr fa3(a[3], b[3], carry_tmp[2], sum[3], carry_tmp[3]);
-  full_addr fa4(a[4], b[4], carry_tmp[3], sum[4], carry_tmp[4]);
-  full_addr fa5(a[5], b[5], carry_tmp[4], sum[5], carry_tmp[5]);
-  full_addr fa6(a[6], b[6], carry_tmp[5], sum[6], carry_tmp[6]);
-  full_addr fa7(a[7], b[7], carry_tmp[6], sum[7], carry_out);
-endmodule
-```
-
----
-
-- dataflow modeling
-
-```verilog
-module top(
-  input [7:0] a, b,
-  input carry_in,
-  output [7:0] sum,
-  output carry_out
-);
-  assign {carry_out, sum} = a + b + {7'b0, carry_in};
-endmodule
-```
+我记得16号下午我们从吃完午饭开始，Ziqin Li先确认了我的工作是 ISA-independent 的，但是论文methodology中间`eax`，`call`,`DWORD ptr` 满天飞。然后他又让我补我的算法的benchmark，刚好那个时候代码又跑不通了。我一边在论文中极力降低自己的措辞与ISA的耦合性，一边疯狂调试我那边不可维护的代码，一边上网查、chatgpt，问我的那些汇编代码在不同ISA的体现方式，忙得不可开交。
 
 <v-click>
 
-to simplify the procedure, I'll use dataflow modeling more to save the space
+终于，在吃晚饭之前，我完成了这两个比较重要的任务。此时，我们只剩下不到三个小时的时间了。
 
 </v-click>
 
 <v-click>
 
-- main.cpp
+然后到了晚上，这个时候疯狂重写motivation, related work 和 discussion。这个时候纯靠自己一句一句写已经来不及了，于是我选择在 motivation 部分给出一个开头，然后让overleaf copilot续写下面的部分。虽然它的写的东西近似于流水账，但读着还是比较舒服的。然后我又在兵荒马乱之中帮 Ziqin Li 写了一部分 discussion，与此同时我也先打开了论文的提交网站，填写了必要的信息。只等他一声令下我把 PDF 传上去点击提交。Ziqin Li 在完成他的部分的同时，调整了一下论文的structure，把related work放在了最后（目的就是写得太烂了不想被reviewer细看）。
 
-```cpp
-while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
-  /* your variable here */ 
-  top->a = rand() % 256; // can directly tranfer an integer to signals
-  top->b = rand() % 256;
-  top->carry_in = rand() % 2;
-  top->eval();
-  tfp->dump(contextp->time());
-  contextp->timeInc(1);
-}
-```
+</v-click>
+
+<v-click>
+
+最后10分钟，我们快速读了一遍文章，没有发现明显的排版错误和语法错误。
+
+</v-click>
+
+<v-click>
+
+最后5分钟，我们再次确认论文是匿名提交的。
+
+</v-click>
+
+<v-click>
+
+最后2分钟，我们上传论文后点击了提交按钮。系统显示我们是第212篇提交的论文，提交时间是2024年4月16日晚上7点58分26秒（UTC+8）。
+
+</v-click>
+
+<v-click>
+
+其实ddl过的十分钟内也是可以交论文的，并不会卡得太死（但不要冒险）。故事结束。
 
 </v-click>
 
 ---
 
-# 3rd run
-
-- 0x67 + 0xc6 + 1 = 0x12e
-
-[![https://imgur.com/UJhLHKQ.png](https://imgur.com/UJhLHKQ.png)](https://imgur.com/UJhLHKQ.png)
-
----
-
-# counter
-
-```verilog
-module top(
-  input clk,
-  output [3:0] tick
-);
-  reg [3:0] saved_tick; // reg can keep its state during different clocks
-  always @(posedge clk) begin
-    // notice the symbol "<=", it is like a delayed assignment by one clock cycle
-    saved_tick <= saved_tick + 1; 
-  end  
-  assign tick = saved_tick;
-endmodule
-```
-
+## 总结
 <v-click>
 
-```cpp
-while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
-  top->clk = 1; top->eval(); // because it is initially 1, so no posedge
-  tfp->dump(contextp->time());
-  contextp->timeInc(1);
-
-  top->clk = 0; top->eval();
-  tfp->dump(contextp->time());
-  contextp->timeInc(1);
-  // two clock cycles later, the counter will increase 1
-}
-```
-
-</v-click>
-
----
-
-# 4th run
-
-- as you can see, after 32 clock cycles, it returned to initial state
-
-[![https://imgur.com/YOEY6bM.png](https://imgur.com/YOEY6bM.png)](https://imgur.com/YOEY6bM.png)
-
---- 
-
-# OK, we used four pieces of code to reviewed "digital circuit design" course. 
-
-# So, lets do something more interesting!!! 
-
----
-
-# instruction cycle
-
-- Let's implement a finite-state machine with one 2-bit reg, with totally 4 instructions!
-
-```cpp
-int pseudo_mem[16] = {
-  // 0b00: mem = 0
-  // 0b01: mem = 1
-  // 0b10: mem = mem - 1
-  // 0b11: mem = mem + 1
-  1, 3, 0, 2
-};
-```
-
-<v-click>
-
-```cpp
-while (contextp->time() < TIME_LIMIT && !Verilated::gotFinish()) { 
-  /* your variable here */ 
-  top->clk = 0;
-  top->inst = pseudo_mem[contextp->time() / 2] % 4; // FETCH
-  top->eval();
-  tfp->dump(contextp->time());
-  contextp->timeInc(1);
-
-  top->clk = 1;
-  top->eval();
-  tfp->dump(contextp->time());
-  contextp->timeInc(1);
-}
-```
-
-</v-click>
-
----
-
-- Here is the implement of reading/writing a register
-
-<v-click>
-
-```verilog
-module mem(
-  input clk,
-  input [1:0] data_in,
-  output[1:0] data_out
-);
-  reg [1:0] mem;    // acutual register like  rax,rbx,... etc. in AMD64
-  assign data_out = mem;
-  always @(posedge clk) begin
-    mem <= data_in;
-  end
-endmodule
-```
+- LaTeX 从来都是现学才会用的。
 
 </v-click>
 
 <v-click>
 
-- To simplify, we suppose every instruction we need to write something into the register, so we omit the `write_enable` signal.
+- overleaf 确实适合论文协作。
 
 </v-click>
 
 <v-click>
 
-- other modules can always read `mem` from `data_out`, but can only write into register when a positive edge of clock occurs.
-
-</v-click>
-
----
-
-- Then let's look at the ALU (arithmetic logic unit) part
-
-<v-click>
-
-```verilog
-module alu(
-  input op,
-  input [1:0] data_in,
-  output[1:0] data_out
-);
-  assign data_out = op ? data_in + 1 : data_in - 1;    
-endmodule
-```
+- connected papers 可以快速确定你的工作有没有人做过，并为相关工作的撰写提供了方便。
 
 </v-click>
 
 <v-click>
 
-- Mostly the ALU part is designed by combinational logic circuit.
+- chatgpt 可以用来写常识性的部分，也可以对画图、画表、算法绘制部分带来一定帮助。（3.5就够了）
 
 </v-click>
 
 <v-click>
 
-- If you still remeber the opcode I previously provided, you can find that `0b10` and `0b11` correspond with the content in ALU.
-
-```
-  // 0b00: mem = 0
-  // 0b01: mem = 1
-  // 0b10: mem = mem - 1
-  // 0b11: mem = mem + 1
-```
+- 有一个 PPT 大师是最好的。
 
 </v-click>
 
 <v-click>
 
-- Before going to the next page, can you try to figure out what the top module will be like?
-
-</v-click>
-
---- 
-
-- OK, let me show the possible answer:
-
-<v-click>
-
-```verilog
-module top(
-  input clk,
-  input[1:0] inst
-);
-  wire [1:0] alu_out, pre_reg, post_reg;
-
-  // READ && WRITE BACK
-  mem top_mem(clk, post_reg, pre_reg);
-  // EXECUTE
-  alu top_alu(inst[0], pre_reg, alu_out);
-  // DECODE
-  assign post_reg = inst[1] ? alu_out : {1'b0, inst[0]};
-endmodule
-```
+- 实在脑子里一团浆糊可以用 overleaf copilot帮你续写内容，同时用于语法查错也是不错的选择。
 
 </v-click>
 
 <v-click>
 
-- first, the `top` module FETCH the instruction from `main.cpp`.
+- 专业领域里自己不想写的内容不要给别人写，因为通常情况下写出来的东西会更烂。
 
 </v-click>
 
-<v-click>
-
-- second, read the reg value from `top_mem`.
-
-</v-click>
-
-<v-click>
-
-- third, DECODE `inst[1]` to decide whether the opcode needs calculation.
-
-</v-click>
-
-<v-click>
-
-- fourth, EXECUTE (i.e. posedge) to write the final value back into reg.
-
-</v-click>
-
----
-
-# 5th run
-
-```c
-mem = 1  // 1
-mem += 1 // 3
-mem = 0  // 0
-mem -= 1 // 2
-``` 
-[![https://imgur.com/hzXkHsY.png](https://imgur.com/hzXkHsY.png)](https://imgur.com/hzXkHsY.png)
-
----
-
-# final challenge: int64 to double
-
-- i.e. `cvtsi2sd` in x86 asm
-
-<v-click>
-
-- IEEE 754 standard: 1-bit sign, 11-bit exponent, 52-bit mantissa
-
-</v-click>
-
-<v-click>
-
-- e.g.: $(100111001)_2$'s exponent is $8$,
-- first, it is a positive integer, so the sign-bit is `0`,
-- we add $8$ into $1023$ to make the exponent bits,
-- cut off the MSB and get the mantissa.
-
-</v-click>
-
-<v-click>
-
-So, the final result is:
-
-`0 10000000111 001110010000...0`
-
-</v-click>
-
-<v-click>
-
-but... we still have a problem,
-
-</v-click>
-
----
-
-## rounding
-
-<v-click>
-
-supoose we have $(11110000111100001111000011110000111100001111000010101010)_2$
-
-</v-click>
-
-<v-click>
-
-after counting for 53 bits, we find:
-
-`11110000111100001111000011110000111100001111000010101` are accurate but the last `010` bits are rounded.
-
-</v-click>
-
-<v-click>
-
-according to the round rule, $(0.010)_2$ is smaller then $(0.1)_2$, so we round down this. 
-
-</v-click>
-
-<v-click>
-
-but what will happen if the omitted bits just euqal to $(0.1)_2$?
-
-Please guess a little bit.
-
-</v-click>
-
-<v-click>
-
-The answer is Banker's Rounding: Round to nearest, ties to even.
-
-Do you remember the first lecture in 大学物理实验 course？ That's it.
-
-</v-click>
-
----
-
-## Banker's Rounding
-
-- Suppose we have $(11110000111100001111000011110000111100001111000010100100)_2$, the accurate bits are `11110000111100001111000011110000111100001111000010100` and omitted bits are `100`, the latter is just equal to $(0.1)_2$.
-
-<v-click>
-
-- if we round it up, the LSB will be `1`, otherwise the LSB will be `0`, so we should round it down.
-
-</v-click>
-
-<v-click>
-
-- Another example, we have $(11110000111100001111000011110000111100001111000010101100)_2$, the accurate bits are `11110000111100001111000011110000111100001111000010101` and omitted bits are still `100`.
-
-</v-click>
-
-<v-click>
-
-- if we round it up, the LSB will be `0`, otherwise the LSB will be `1`, so we should round it up.
-
-- That's it. Let's take a look at its implementation.
-
-</v-click>
-
---- 
-
-## implementation
-
-- calc_significant_bit
-
-```verilog
-module calc_significant_bit (
-  input [63:0] a,
-  output [5:0] b
-);
-  always @* begin
-    begin
-      for (int i = 63; i >= 0; i--) begin
-        if (a[i]) begin
-          b = i[5:0];
-          break;
-        end
-      end
-    end
-  end
-endmodule
-```
-
-<v-click>
-
-- This is a typical example of **behavioral modeling**, it is easy for us to understand the procedure. But it is hard for us to debug, and for EDA tools to synthesize. What's more, the performance will drop, **especially when you want to write every complex module in a programmer's way, not thinking of we're acutally building the hardware.**
-
-</v-click>
-
----
-
-- calc_mantissa
-
-```verilog
-module mantissa (
-  input [63:0] a,
-  input [5:0] exp,
-  output [51:0] b
-);
-  always @* begin
-    if (exp <= 52) begin
-      b[51:51-exp+1] = a[exp-1:0];
-    end else begin
-      b[51:0] = a[exp-1:exp-52];
-      // Banker's rounding
-      if (a[exp-53] == 1 && (exp == 53 || a[exp-54:0] == 0)) begin
-        b = b + {51'b0, b[0]};
-      end else begin
-        b = b + {51'b0, a[exp-53]};
-      end
-    end
-  end
-endmodule
-```
-
-<v-click>
-
-- Of course, verilog itself doesn't support slicing with dynamic variables, can you come up with the solution?
-
-</v-click>
-
----
-
-- top
-
-```verilog
-module top (
-  input [63:0] a,
-  output [63:0] b
-);
-  wire sign;
-  wire [5:0] exp;
-  wire [10:0] fixed_exp;
-  wire [51:0] mant;
-  wire [63:0] result;
-  calc_significant_bit calc_significant_bit_0 (a, exp);
-  mantissa mantissa_0 (a, exp, mant);
-  assign sign = a[63];
-  assign fixed_exp = {5'b0, exp} + 1023;
-  assign result = {sign, fixed_exp, mant};
-  assign b = result;
-endmodule
-```
-
-
-<v-click>
-
-- how to transfer `int64` to double numbers from memory directly without conversion? 
-
-- Hint: `union`
-
-</v-click>
-
-
-<v-click>
-
-- One last question, this pseudocode only handles positive integers, what about negatives?
-
-</v-click>
