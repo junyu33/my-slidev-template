@@ -400,7 +400,7 @@ size_t write(int fd, const void *buf, size_t count) {
     if (bytes_written > 0) {
         fds[fd].offset += bytes_written;
         if (fds[fd].offset > fds[fd].size) {
-            // there is no check if different fds overlap
+            // TODO: add some checks if different fds overlap
             fds[fd].size = fds[fd].offset;
         }
     }
