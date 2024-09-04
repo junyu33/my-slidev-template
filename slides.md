@@ -1,515 +1,378 @@
-# LoOS filesystem: from raw.img to I/O syscalls
+# (ex)gcd，逆元与其他
 
 junyu33
 
-2024/07/04
+2024/09/xx
 
 ---
 
-## overall procedure
+## 约数与最大公约数
 
-- `disk_init`: 
-    - read the `raw.img` using AHCI protocol
-    - determine the number of sectors
-    - save the whole content of raw.img into `ramdisk`.
-- `fs_init`: 
-    - set `stdin`, `stdout` and `stderr`
-    - initialize other `fd` struct
-    - traverse the whole filesystem save the information in global vars like `offset_by_inode`, `size_by_inode`, etc. 
-- implementations of different I/O syscalls
+我们在小学三年级的时候就学过带余除法，例如：
 
----
+$$ 14 \div 4 = 3 \mathrel{\dotso} 2$$
 
-## disk_init (`disk.c`: 20-40)
+<v-click>
 
-read the first sector of `raw.img` using AHCI protocol, the size is 512 bytes:
+或者，如果有人觉得这个除号很难看，我们可以写成：
 
-```c
-    uint8_t buf[8192];
-    HBA_MEM *abar = (void*)SATA_ADDR;
-    int port_num = ahic_probe_port(abar);  // port 1, disk hdb
-    // int ahci_read(HBA_MEM *abar, int port_num, uint32_t startl, uint32_t starth, uint32_t count, uint8_t *buf);
-    ahci_read(abar, port_num, 0, 0, 1, buf);
-```
+$$ 14 = 4 \times 3 + 2$$
 
-> and here is a typo
+</v-click>
 
-then determine the number of sectors of `raw.img`:
+<v-click>
 
-```c
-    struct fat32hdr *bs = (void*)buf;
-    // we have these 2 entries in fat32.h, so we write this conditional operator
-    // struct fat32hdr {
-    // ...
-    // uint16_t BPB_TotSec16;        // Total sectors (if zero, use BPB_TotSec32)
-    // uint32_t BPB_TotSec32;        // Total sectors (if BPB_TotSec16 is 0, use this value)
-    // ...
-    // }
-    int tot_sectors = bs->BPB_TotSec16 ? bs->BPB_TotSec16 : bs->BPB_TotSec32;
-    Log("tot_sector: %d\n", tot_sectors);
-```
+将其推广到整数上，我们可以得到：
+
+$$ a = b \times q + r$$
+
+其中 $a, b, q, r$ 都是整数，$a$ 是被除数，$b$ 是除数，$q$ 为商（quotient），$r$ 是余数（remainder），$0 \leq r < b$。
+
+另外，我们记商 $q$ 为 $\lfloor\frac{a}{b}\rfloor$（下取整），余数 $r$ 为 $a \mod b$。
+
+</v-click>
+
+<v-click>
+
+请记住这几个字母和符号代表的意义，我们在后面的内容中会经常用到。
+
+</v-click>
 
 ---
 
-finally, read the disk sectors sequentially, 4096 bytes each. And save them in `ramdisk`.
+## 约数与最大公约数
 
-```c
-    Log("CONFIG_RAMDISK_SIZE / 4096 = %d\n", CONFIG_RAMDISK_SIZE / 4096);
-    for (int i = 0; i < min(tot_sectors / 8, CONFIG_RAMDISK_SIZE / 4096); i++) { // use min to avoid memory overflow
-        int ret = ahci_read(abar, port_num, i*8, 0, 8, buf);
-        memcpy(ramdisk + i*4096, buf, 4096); // copy to ramdisk
-        if (ret == -1) {
-            break;
+当$r = 0$时，我们称 $b$ 是 $a$ 的**约数**，或者说 $a$ 可以被 $b$ 整除，记作 $b \mid a$。
+
+如果存在两个数 $m, n$，有 $x \mid m, x \mid n$，那么我们称 $x$ 是 $m$ 和 $n$ 的**公约数**。
+
+<v-click>
+
+如果 $x$ 是 $m$ 和 $n$ 的公约数，且对于任意的公约数 $y$，有 $y \le x$（或者 $y \mid x$，为什么？)，那么我们称 $x$ 是 $m$ 和 $n$ 的**最大公约数**，记作 $\gcd(m, n)$。
+
+那现在的问题是，如何求两个数的最大公约数呢？
+
+</v-click>
+
+---
+
+## 枚举法
+
+最简单的方法就是枚举法，我们可以枚举 $m$ 和 $n$ 的所有约数，然后找到它们的最大公约数。
+
+伪代码如下：
+
+```cpp
+int gcd(int m, int n) {
+    int ans = 0;
+    for (int i = 1; i <= min(m, n); i++) {
+        if (m % i == 0 && n % i == 0) {
+            ans = i;
         }
     }
-```
-
-and here is the two abstractions of ramdisk I/O (`disk.c`: 9-17):
-
-```c
-int ramdisk_read(void *buf, int offset, int len) {
-    memcpy(buf, ramdisk + offset, len);
-    return len;
-}
-
-int ramdisk_write(void *buf, int offset, int len) {
-    memcpy(ramdisk + offset, buf, len);
-    return len;
+    return ans;
 }
 ```
 
+<v-click>
+
+显然，这个方法的时间复杂度是 $O(\min(m, n))$，当 $m, n$ 较大时，这个方法是不可取的。
+
+</v-click>
+
 ---
 
-## fs_init (`fs.c`: 30-59)
+## 辗转相除法
 
-set `stdin`, `stdout` and `stderr` file descriptors:
+假设 $m > n$，有性质 $\gcd(m, n) = \gcd(m \mod n, n)$，证明如下：
 
-```c
-    fds[STDIN].is_open = 1; // 标准输入
-    fds[STDOUT].is_open = 1; // 标准输出
-    fds[STDERR].is_open = 1; // 标准错误
-```
+我们先证 $\gcd(m, n) = \gcd(m - n, n)$：
 
-add dirty hack to enable output written into the terminal, kind of like MMIO:
+设 $d = \gcd(m, n)$，那么 $d \mid m$，且 $d \mid n$，设 $m = dm'$，$n = dn'$。
 
-```c
-    #define STDOUT_MAGIC_OFFSET 0xdeadbeef
-    fds[STDOUT].offset = STDOUT_MAGIC_OFFSET;
-    fds[STDERR].offset = STDOUT_MAGIC_OFFSET;
-```
+显然，我们有 $\gcd(m', n') = 1$，否则我们可以找到 $d' = d \times \gcd(m', n')$，使得 $d'$ 是 $m, n$ 的最大公约数。
 
-initialize other file descriptors:
+那么 $m - n = d(m' - n')$，显然 $d \mid m - n$，所以 $d$ 也是 $m - n$ 和 $n$ 的公约数。
 
-```c
-    for (int i = 3; i < MAX_FILES; i++) {
-        fds[i].f_inode = NULL; // 文件 inode
-        fds[i].offset = 0; // 文件偏移量
-        fds[i].size = 0;   // 文件大小
-        fds[i].base = 0;   // 文件在磁盘上的偏移量
-        fds[i].is_open = 0; // 文件是否打开
+因为 $m$ 与 $n$ 互质，所以 $m - n$ 与 $n$ 互质。按照第四行的结论，可得 $d$ 是 $m - n$ 和 $n$ 的最大公约数。 
+
+利用上述结论，只需要进行 $\lfloor \frac{m}{n} \rfloor$ 次操作，就可以得到 $\gcd(m, n) = \gcd(m \mod n, n)$。
+
+<v-click>
+
+> 但是，这个证明是错误的，所以这个证明有什么问题？
+
+</v-click>
+
+<v-click>
+
+错误的点在于，"因为 $m$ 与 $n$ 互质，所以 $m - n$ 与 $n$ 互质"这个推理用到了我们要证明的结论，所以陷入了循环论证。
+
+我们需要重新开始。
+
+</v-click>
+
+---
+
+## 辗转相除法
+
+假设 $m > n$，有性质 $\gcd(m, n) = \gcd(m \mod n, n)$，证明如下：
+
+我们先证 $\gcd(m, n) = \gcd(m - n, n)$：
+
+设 $d = \gcd(m, n)$，那么 $d \mid m$，且 $d \mid n$，故 $d \mid m - n$。
+
+因此，$d$ 是 $m - n$ 和 $n$ 的公约数。
+
+<v-click>
+
+另一方面，设 $d' = \gcd(m - n, n)$，那么 $d' \mid m - n$，且 $d' \mid n$。
+
+因此，$d' \mid ((m - n) + n)$，即 $d' \mid m$。因此，$d'$ 是 $m$ 和 $n$ 的公约数。
+
+这样，我们可得 $d' \mid d$。同理，我们可以得到 $d \mid d'$，因此 $d = d'$，即 $\gcd(m, n) = \gcd(m - n, n)$。
+
+</v-click>
+
+<v-click>
+
+利用上述结论，只需要进行 $\lfloor \frac{m}{n} \rfloor$ 次操作，就可以得到 $\gcd(m, n) = \gcd(m \mod n, n)$。
+
+</v-click>
+
+<v-click>
+
+[Quod erat demonstrandum](https://music.163.com/#/song?id=36024831).
+
+</v-click>
+
+---
+
+## 辗转相除法
+
+因为 $\gcd(m, n) = \gcd(m \mod n, n)$，而 $m \mod n < n$，又化归为一个更小的问题。
+
+因此，我们可以递归进行辗转相除法，直到某一项为 $0$，那么另一项就是两个数的最大公约数。
+
+```cpp
+int gcd(int m, int n) {
+    if (n == 0) {
+        return m;
     }
-```
-
----
-
-To get the inode for every file, LoOS traverses the FAT32 filesystem. First it needs to get the bootsector and the corresponding cluster:
-
-```c
-    // get the inode for every file
-    struct fat32hdr* bootSector = (struct fat32hdr*)ramdisk;
-    uint32_t cluster = bootSector->BPB_RootClus;    
-    readDirectory(cluster, bootSector, 0);
-```
-
-Then it calls `readDirectory` (`fat32.c`: 245-340) to do the actual implementation.
-
-```c
-void readDirectory(uint32_t cluster, const struct fat32hdr *bootSector, int depth);
-```
-
----
-
-## readDirectory (`fat32.c`: 245-340)
-
-If the currect cluster doesn't have an end-of-cluster marker `0xffffff8`, it reads the cluster and save the content in `buffer`
-
-```c
-    while (currentCluster < 0x0FFFFFF8) {
-        readCluster(currentCluster, bootSector, buffer);
-        struct DirectoryEntry *entries = (struct DirectoryEntry *)buffer;
-        char lfn[256] = {0};
-        int lfnIndex = 0;
-```
-
-For the procedure of readling a cluster, it can be summarized in 3 steps:
-
-```c
-void readCluster(uint32_t cluster, const struct fat32hdr *bootSector, uint8_t *buffer) {
-    // Calculates the first sector of the data region.
-    uint32_t firstDataSector = bootSector->BPB_RsvdSecCnt + (bootSector->BPB_NumFATs * bootSector->BPB_FATSz32);
-    // Determines the first sector of the specified cluster within the data region.
-    uint32_t firstSectorOfCluster = ((cluster - 2) * bootSector->BPB_SecPerClus) + firstDataSector;
-    // Copies the entire cluster's worth of data from the ramdisk to the provided buffer.
-    memcpy(buffer, ramdisk + (firstSectorOfCluster * bootSector->BPB_BytsPerSec),
-        bootSector->BPB_BytsPerSec * bootSector->BPB_SecPerClus);
+    return gcd(n, m % n);
 }
 ```
 
----
+<v-click>
 
-Then, we should process the directory entry:
+这个算法的时间复杂度是 $O(\log \min(m, n))$，是一个非常高效的算法。
 
-```c
-for (int i = 0; i < bootSector->BPB_BytsPerSec * bootSector->BPB_SecPerClus / sizeof(struct DirectoryEntry); i++) {
-    if (entries[i].DIR_Name[0] == 0) {
-        break;
-    }
-    if (entries[i].DIR_Name[0] == 0xE5) { // Deleted entry
-        continue;
-    }
-    if ((entries[i].DIR_Attr & 0x0F) == 0x0F) { // Long file name entry
-        parse_long_file_name(entries, i, lfn);
-        continue;
-    }
-    if ((entries[i].DIR_Attr & 0x10) != 0) { // Directory
-        // parse the directory
-    } else {                                 // File
-        // parse the file
-    }
-}
-```
+</v-click>
 
-see section 6 in [this link](https://jyywiki.cn/pages/OS/manuals/MSFAT-spec.pdf) for more details.
+<v-click>
+
+但是，问题来了，我们知道这个算法是对数级别的，那么这个对数的底数究竟是多少呢？
+
+> 问题：我们假设这个算法的时间复杂度是 $O(\log_{x} \min(m, n))$，那么$x$的值为？
+
+</v-click>
+
+<v-click>
+
+答案是$\frac{1 + \sqrt{5}}{2}$，也就是黄金分割比例。
+
+</v-click>
 
 ---
 
-Finally, handle directories...
+## 辗转相除法的时间复杂度分析（有点难）
 
-```c
-if (entries[i].DIR_Name[0] != '.' && entries[i].DIR_Name[1] != '.') { // assume no files begin with "./"
-    if (lfn[0] != '\0') { // if lfn is not empty, we use the long filename
-        memcpy(name_by_inode[inode_cnt], lfn, 256);
-    } else {
-        memcpy(name_by_inode[inode_cnt], entries[i].DIR_Name, 256);
-    }
-    offset_by_inode[inode_cnt] = get_offset(&entries[i], bootSector);
-    ctime_by_inode[inode_cnt] = fat_to_unix_time(entries[i].DIR_CrtDate, entries[i].DIR_CrtTime);
-    mtime_by_inode[inode_cnt] = fat_to_unix_time(entries[i].DIR_WrtDate, entries[i].DIR_WrtTime);
-    atime_by_inode[inode_cnt] = fat_to_unix_time(entries[i].DIR_LstAccDate, 0); // 访问时间只有日期
-    size_by_inode[inode_cnt++] = 0;
+我们需要知道，在什么情况下，辗转相除法会有最坏的时间复杂度。（我们假设 $m > n$）
 
-    int cur_inode = inode_cnt;
-    uint32_t subdirCluster = (entries[i].DIR_FstClusHI << 16) | entries[i].DIR_FstClusLO;
-    readDirectory(subdirCluster, bootSector, depth + 1); // recursive parse the content under that folder
+<v-click>
 
-    if (cur_inode == inode_cnt) { // empty folder
-        to_inode[cur_inode - 1] = 0; 
-    } else {
-        // to_inode means the first file under the folder
-        to_inode[cur_inode - 1] = cur_inode;                    
-    }
-    next_inode[cur_inode - 1] = inode_cnt; // next_inode means the next item after the folder (in the same depth)
-}
-```
+首先，我们显然可以知道，要达到最坏的时间复杂度，必有$n > \frac{m}{2}$，不然可以找到一个更小的$m' = m - n$也能达到同样的效果。
+
+</v-click>
+
+<v-click>
+
+当 $n$ 很大，和 $m$ 很接近的时候？不对，那样 $m$ 和 $n$ 一除，余数就变小了，肯定不行。
+
+</v-click>
+
+<v-click>
+
+同理，$n$ 相对于 $m$ 来说，不能太小（靠近 $\frac{m}{2}$）。否则 $n$ 与 $m \mod n$ 的值会很接近，这样也会很快结束。
+
+</v-click>
+
+<v-click>
+
+当 $n$ 和 $m$ 基本上离倍数关系“很远”的时候？有点可能，但是这个“很远”是什么意思呢？
+
+</v-click>
+
+<v-click>
+
+是不是当 $m$ 与 $n$ 之间的关系跟 $n$ 和 $m \mod n$ 之间的关系差不多的时候？
+
+</v-click>
+
+<v-click>
+
+有点意思。
+
+</v-click>
+
+---
+
+## 辗转相除法的时间复杂度分析（有点难）
+
+是不是当 $m$ 与 $n$ 之间的关系跟 $n$ 和 $m \mod n$ 之间的关系差不多的时候？
+
+这句话翻译成数学语言就是：
+
+$$ x : 1 = 1 : (x - 1) \land x > 0 $$
+
+解一下这个方程，我们可以得到 $x = \frac{1 + \sqrt{5}}{2}$。
+
+正是黄金分割比例。
+
+<v-click>
+
+当然，这只是一种非常直观的解释，具体的证明又需要分成两步：
+
+1. 证明辗转相除法在 fibonacci 数列上达到最坏时间复杂度。
+2. 证明 fibonacci 数列的通项公式近似于底数为黄金分割比例的指数数列。
+
+</v-click>
+
+---
+
+## 辗转相除法与 fibonacci 数列（有点难）
+
+我们可以使用数学归纳法证明，辗转相除法在 fibonacci 数列上达到最坏时间复杂度。
+
+我们的命题是：假设用辗转相除法求自然数$a$和$b$（$a>b>0$）的最大公约数需要$N$步，那么满足这一条件的$a$和$b$的最小值分别是斐波那契数$F_{N+2}$和$F_{N+1}$。
+
+<v-click>
+
+当 $N = 1$ 时，$a = F_3 = 2, b = F_2 = 1$，满足条件，此时$a,b$是满足条件的最小值。
+
+</v-click>
+
+<v-click>
+
+假设当 $N = K-1$ 时，$a = F_{K+1}, b = F_{K}$ 满足条件。
+
+一个需要$K$步的算法第一步是 $a = q_0b+r_0$，第二步是 $b = q_1r_0+r_1$。
+
+</v-click>
+
+<v-click>
+
+根据 $N = K-1$ 的假设，因为求 $\gcd(b, r_0)$ 需要 $K-1$ 步，所以 $b \ge F_{K+1}, r_0 \ge F_K$。 
+
+</v-click>
+
+
+<v-click>
+
+而$a = q_0b+r_0 \ge b+r_0 \ge F_{K+1}+F_K = F_{K+2}$
+
+因此这个需要$K$步的算法需要满足$a \ge F_{K+2}, b \ge F_{K+1}$。这样第一部分就证明完了。
+
+1844年，加百利·拉梅发现这个证明，标志着计算复杂性理论的开端。同时，这也是 fibonacci 数列的第一个实际应用。
+
+</v-click>
 
 --- 
 
-For example:
+## 辗转相除法与 fibonacci 数列（有点难）
 
-![](img/inode.png)
+接下来我们证明 fibonacci 数列的通项公式近似于底数为黄金分割比例的指数数列。（这话读着可真费劲）
 
---- 
+首先我们需要知道 fibonacci 数列的通项公式。我知道有两种方式可以求，第一种是使用特征方程，第二种是使用生成函数，这两种方法都不是很简单，这里我选择直接跳过。
 
-and handle files:
+<v-click>
 
-```c
-if (lfn[0] != '\0') {
-    for (int j = 0; j < depth; j++) { printf("    "); } // for indentation
-    memcpy(name_by_inode[inode_cnt], lfn, 256);
-} else {
-    printFileName(entries[i].DIR_Name, depth);
-    memcpy(name_by_inode[inode_cnt], entries[i].DIR_Name, 256);
-}
-offset_by_inode[inode_cnt] = get_offset(&entries[i], bootSector);
-ctime_by_inode[inode_cnt] = fat_to_unix_time(entries[i].DIR_CrtDate, entries[i].DIR_CrtTime);
-mtime_by_inode[inode_cnt] = fat_to_unix_time(entries[i].DIR_WrtDate, entries[i].DIR_WrtTime);
-atime_by_inode[inode_cnt] = fat_to_unix_time(entries[i].DIR_LstAccDate, 0); // 访问时间只有日期
+我们换一种思路，如果我们求出相邻的斐波那契数的比值，如果这个比值是无限接近于黄金分割比例，那么我们就可以证明这个结论（无 $\epsilon-\delta$ 版本，不够严谨）。
 
-size_by_inode[inode_cnt] = entries[i].DIR_FileSize;
-to_inode[inode_cnt] = 0;
-next_inode[inode_cnt] = inode_cnt + 1;
-inode_cnt++;
-```
+</v-click>
 
-In this way, we can store each file's metadata in global vars. However here are some drawbacks:
+<v-click>
 
-- A little tricky to append/delete new files/folders as well as maintaining `to_inode` and `next_inode`.
-- Initialization time and memory overhead (not very important).
+假设这个极限存在，设其为 $L$，即 $L = \lim_{n \to \infty} \frac{F_{n+1}}{F_n}$。根据 fibonacci 数列的递推关系 $F_{n+1} = F_n + F_{n-1}$，我们可以写出：
 
---- 
+$$
+\frac{F_{n+1}}{F_n} = \frac{F_n + F_{n-1}}{F_n} = 1 + \frac{F_{n-1}}{F_n}
+$$
 
-## Filesystem I/O syscalls implemetations
+当 $n$ 很大时，$\frac{F_{n-1}}{F_n}$ 也接近 $\frac{1}{L}$：
 
-Here are the sources of I/O implementations in kernel-land. Some improvements are written in `TODO` in the comments of the code.
+$$
+L = 1 + \frac{1}{L}
+$$
 
-### open/openat
+解这个方程，我们可以得到 $L = \frac{1 + \sqrt{5}}{2}$，这样第二部分就证明完了。
 
-```c
-int open(const char *pathname, int flags, ...) {
-    if (pathname[0] == '.' && pathname[1] == '/') {
-        pathname += 2; // TODO: we assume all files needed to open are in the root dir, TO BE FIXED!!!
-    }
-    for (int i = 3; i < MAX_FILES; i++) {
-        if (!fds[i].is_open) {
-            fds[i].is_open = 1;
-            fds[i].base = find_offset_by_pathname(pathname);
-            fds[i].offset = 0; // the inner offset from a file
-            fds[i].size = find_size_by_pathname(pathname);
-            if (fds[i].base < 0 || fds[i].size < 0) {
-                fds[i].is_open = 0;
-                return -1;
-            }
-            return i; // 返回文件描述符
-        }
-    }
-    return -1; // 没有可用的文件描述符
-}
-```
-
---- 
-
-```c
-int openat(int dirfd, const char *pathname, int flags) {
-    // ... (the same as open)
-    if (fds[i].base < 0 || fds[i].size < 0) {
-        if (flags & O_CREAT) {
-            // 创建文件
-            strcpy(name_by_inode[inode_cnt], pathname);
-            offset_by_inode[inode_cnt] = 0; // TODO: change 0 to another reasonable value
-            size_by_inode[inode_cnt] = 0;
-            to_inode[inode_cnt] = -1; next_inode[inode_cnt] = to_inode[dirfd]; // link-list insertion
-            to_inode[dirfd] = inode_cnt; inode_cnt++;
-
-            for (int j = 3; j < MAX_FILES; j++) {
-                if (!fds[j].is_open) {
-                    fds[j].f_inode = inode_cnt - 1; // corresponding inode for current fd
-                    fds[j].is_open = 1;
-                    fds[j].base = 0x100000; // TODO: substitute 0x1000000 to another reasonable value
-                    fds[j].offset = 0;
-                    fds[j].size = 0;
-                    return j; // 返回文件描述符
-                }
-            }
-        }
-        fds[i].is_open = 0;
-        return -1;
-    }
-    // ... (the same as open) 
-}
-```
+</v-click>
 
 ---
 
-### close
+## 乘法逆元
 
-```c
-static inline int fd_invalid(int fd) {
-    return (fd < 0) || (fd >= MAX_FILES) || (!fds[fd].is_open);
-}
+我们在小学五年级便系统学习了与分数运算相关的内容，我们知道除以一个数等于乘一个数的倒数，例如：
 
-int close(int fd) {
-    if (fd_invalid(fd)) {
-        return -1;
-    }
+$$ 5 \div 3 = 5 \times \frac{1}{3} $$
 
-    // dirty hack
-    if (fd > 2) {
-        fds[fd].is_open = 0;
-    }
-    return 0;
-}
-```
+<v-click>
 
---- 
+或者也可以写成：
 
-### lseek
+$$ 5 \div 3 = 5 \times 3^{-1} $$
 
-```c
-int check_offset(FILE *f, int offset) {
-    if (offset < 0) 
-        return 0;
-    else if (offset >= f->size) 
-        return f->size;
-    else 
-        return offset;
-}
+</v-click>
 
-int lseek(int fd, int offset, int whence) {
-    if (fd_invalid(fd)) { return -1;}
+<v-click>
 
-    FILE *f = &fds[fd];
-    switch (whence) {
-        case SEEK_SET: f->offset = check_offset(f, offset); break;
-        case SEEK_CUR: f->offset = check_offset(f, f->offset + offset); break;
-        case SEEK_END: f->offset = check_offset(f, f->size + offset); break;
-        default: return -1;
-    }
+我们就可以认为$3$和$\frac{1}{3}$互为乘法逆元，因为他们的乘积为乘法的单位元$1$。
 
-    return f->offset;
-}
-```
+
+
+</v-click>
+
+<v-click>
+
+现在我们将目光从有理数域$\mathbb{Q}$转移到有限整数域$\mathbb{Z_p}$（$p$为质数）：
+
+</v-click>
+
+<v-click>
+
+我们假设取$p=17$，那么我们又该如何计算$5 \div 3$呢？
+
+</v-click>
 
 ---
 
-### read/write
+## 乘法逆元
 
-```c
-size_t read(int fd, void *buf, size_t count) {
-    if (fd_invalid(fd)) {
-        return -1;
-    }
+首先，我们不能直接套用“除以一个数等于乘一个数的倒数”这句话，因为$\frac{1}{3}$这个数不在$\mathbb{Z_{17}}$中。
 
-    int remain = fds[fd].size - fds[fd].offset;
-    int bytes_read = ramdisk_read(buf, fds[fd].base + fds[fd].offset, _min(count, remain));
-    if (bytes_read > 0) {
-        fds[fd].offset += bytes_read;
-    }
+但是，$3^{-1}$这个数显然还是存在的，因为有域的基本性质，我们肯定能在$\mathbb{Z_{17}}$中找到一个数，使得$3 \times 3^{-1} = 1$。
 
-    return bytes_read;
-}
-```
+那么，我们该如何找到这个数呢？
 
----
+<v-click>
 
-```c
-size_t write(int fd, const void *buf, size_t count) {
-    if (fd_invalid(fd)) {
-        return -1;
-    }
+当然，最简单的方法还是枚举$\mathbb{Z_{17}}$中的所有元素，来逐一验证他们的乘积 $\mod 17$，结果是否为$1$，代码如下：
 
-    // dirty hack of written to stdout and stderr
-    if (fds[fd].offset == STDOUT_MAGIC_OFFSET) {
-        for (int i = 0; i < count; i++) {
-            putch(((char *)buf)[i]);
-        }
-        return count;
-    }
-
-    int remain = fds[fd].size - fds[fd].offset;
-    int bytes_written = ramdisk_write((void *)buf, fds[fd].base + fds[fd].offset, _min(count, remain));
-    if (bytes_written > 0) {
-        fds[fd].offset += bytes_written;
-        if (fds[fd].offset > fds[fd].size) {
-            // TODO: add some checks if different fds overlap
-            fds[fd].size = fds[fd].offset;
-        }
-    }
-
-    return bytes_written;
-}
-```
-
---- 
-
-### fstat
-
-```c
-int find_inode_by_base(int base) {
-    for (int i = 0; i < inode_cnt; i++) {
-        if (offset_by_inode[i] == base) {
-            return i;
-        }
-    }
-    return -1; // File not found
-}
-int fstat(int fd, struct stat* buf) {
-    int offset = fds[fd].base;
-    int size = fds[fd].size;
-    buf->st_dev = 1792;         // MAGIC NUMBER
-    buf->st_ino = find_inode_by_base(offset);         // Inode number 
-    buf->st_mode = 33261;        // MAGIC NUMBER
-    buf->st_nlink = 1;       // Number of hard links 
-    buf->st_uid = 0;         // TODO: fix user id
-    buf->st_gid = 0;         // TODO: fix group id 
-    buf->st_rdev = 0;        // TODO: fix device id
-    buf->st_size = size;     // Total size, in bytes
-    buf->st_blksize = 512;   // Blocksize for file system I/O
-    buf->st_blocks = (size + 511) / 512; // Number of 512B blocks allocated
-    buf->st_atime = atime_by_inode[(uint32_t)buf->st_ino];   // Time of last access
-    buf->st_mtime = mtime_by_inode[(uint32_t)buf->st_ino];   // Time of last modification
-    buf->st_ctime = ctime_by_inode[(uint32_t)buf->st_ino];   // Time of last status change
-    return 0;
-}
-```
-
----
-
-### fcntl
-
-```c
-int fcntl(int fd, int cmd, ...) {
-    if (fd_invalid(fd)) {
-        return -1;
-    }
-    // dynamic argument
-    va_list args;
-    va_start(args, cmd);
-    int result = -1;
-
-    switch (cmd) {
-        case F_DUPFD: { // copy a new fd to the current fd
-            int arg = va_arg(args, int);
-            for (int i = arg; i < MAX_FILES; i++) {
-                if (!fds[i].is_open) {
-                    fds[i] = fds[fd];
-                    result = i;
-                    break;
-                }
-            }
-            break;
-        }
-        case F_GETFD: // get the status of current fd
-            result = fds[fd].is_open;
-            break;
-    // to be continued ...
-```
-
----
-
-```c
-        case F_SETFD: { // set the status of current fd
-            int arg = va_arg(args, int);
-            fds[fd].is_open = arg;
-            result = 0;
-            break;
-        }
-        // TODO: getting the file status flags.
-        case F_GETFL: result = 0; break; 
-        // TODO: setting the file status flags.
-        case F_SETFL: result = 0; break; 
-        // TODO: getting the record locking information.
-        case F_GETLK: result = 0; break; 
-        // TODO: record locking information (non-blocking).
-        case F_SETLK: result = 0; break; 
-        // TODO: record locking information (blocking).
-        case F_SETLKW: result = 0; break; 
-        default: result = -1; break;
-    }
-
-    va_end(args);
-    return result;
-}
-```
-
---- 
-
-### dup/dup3
-
-```c
-int dup(int oldfd) {
-    for (int i = 3; i < MAX_FILES; i++) {
-        if (!fds[i].is_open) {
-            fds[i] = fds[oldfd];
+```cpp
+int inv(int x) {
+    for (int i = 0; i < 7; i++) {
+        if (x * i % 7 == 1) {
             return i;
         }
     }
@@ -517,124 +380,170 @@ int dup(int oldfd) {
 }
 ```
 
-```c
-int dup3(int oldfd, int newfd, int flags) {
-    assert(newfd >= 3 && newfd < MAX_FILES);
-    // TODO: 检查 oldfd 和 newfd 是否有效
-    // if (fd_invalid(oldfd) || fd_invalid(newfd)) {
-    //     // errno = EBADF;
-    //     return -1;
-    // }
+</v-click>
 
-    // 如果 oldfd 和 newfd 相同，且没有其他标志，则直接返回 newfd
-    if (oldfd == newfd) {
-        return newfd;
-    }
-    // (to be continued)
-```
+<v-click>
+
+当然，这样的计算效率还是太低了。
+
+</v-click>
 
 ---
 
-```c
-    // 如果 newfd 已经打开，先关闭它
-    if (fds[newfd].is_open == 1) {
-        close(newfd);
-    }
+## 扩展欧几里得算法
 
-    // 复制 oldfd 的文件描述符到 newfd
-    fds[newfd] = fds[oldfd];
+我们来重述这个问题，为了求$3$在$\mathbb{Z_{17}}$中的乘法逆元，我们需要找到一个数$x$，使得$3 \times x \equiv 1 \pmod{17}$。
 
-    // 处理 flags
-    if (flags & O_CLOEXEC) {
-        // 设置 O_CLOEXEC 标志
-        int flags_newfd = fcntl(newfd, F_GETFD);
-        if (flags_newfd == -1) {
-            return -1;
-        }
-        if (fcntl(newfd, F_SETFD, flags_newfd | FD_CLOEXEC) == -1) {
-            return -1;
-        }
-    }
+我们对这个方程进行变形，得到：
 
-    // 返回新的文件描述符
-    return newfd;
-}
-```
+$$ 3x - 17y = 1 \land x,y \in \{0,1,2,...,16\}$$
+
+<v-click>
+
+我们通常会使用扩展欧几里得算法来解决这个问题，具体的算法如下：
+
+1. 先使用辗转相除法求出$\gcd(3, 17)$。
+2. 再通过倒推的方法，求出$x$和$y$。
+
+</v-click>
 
 ---
 
-### getdents64
+## 扩展欧几里得算法
 
-```c
-int getdents64(int fd, struct linux_dirent64 *dirp, size_t count) {
-    int bytes_written = 0;
-    int cur_inode = find_curnode_byfd(fd);  
-    if (cur_inode < 0 || cur_inode >= inode_cnt) {
-        return -1; // Invalid inode index
-    }
-    int child_inode = to_inode[cur_inode]; // to_inode is the first child node
-    while (child_inode != -1 && bytes_written < count) {
-        struct linux_dirent64 *current_dirent = (struct linux_dirent64 *)((char *)dirp + bytes_written);
-        size_t name_len = strlen(name_by_inode[child_inode]);
-        size_t record_length = offsetof(struct linux_dirent64, d_name) + name_len + 1;
-        if (bytes_written + record_length > count) { break; } // Not enough space left in buffer
-        current_dirent->d_ino = child_inode;
-        current_dirent->d_off = bytes_written + record_length;
-        current_dirent->d_reclen = record_length;
-        // Assuming regular file type for simplicity (file or dir)
-        current_dirent->d_type = size_by_inode[current_dirent->d_ino] ? DT_REG : DT_DIR; 
-        strcpy(current_dirent->d_name, name_by_inode[child_inode]);
+我们先使用辗转相除法求出$\gcd(3, 17)$。
 
-        bytes_written += record_length;
-        child_inode = next_inode[child_inode]; // go to the next node in the same depth
-    }
-    return bytes_written;
-}
-```
+$$ 17 = 5 \times 3 + 2$$
 
---- 
+$$ 3 = 1 \times 2 + 1$$
 
-### mkdir
+$$ 2 = 2 \times 1 + 0$$
 
-```c
-int mkdir(int dirfd, const char *pathname, int mode) {
-    int new_inode = find_inode_by_pathname(pathname);
-    if (new_inode != -1) {
-        return -17; // Directory already exists, you can see errno.h to check this err code
-    }
+递归完成，我们得到$\gcd(3, 17) = 1$。
 
-    // Create a new directory
-    strcpy(name_by_inode[inode_cnt], pathname);
-    offset_by_inode[inode_cnt] = -1;
-    size_by_inode[inode_cnt] = 0;
-    to_inode[inode_cnt] = -1;
-    // TODO: there is no data structure connected to this new dir, please add it!!!
-    inode_cnt++;
+<v-click>
 
-    return 0;
-}
-```
+接下来，我们使用倒推的方法，求出$x$和$y$。
+
+$$
+\begin{align*}
+1 &= 3 - 1 \times 2 \\
+  &= 3 - 1 \times (17 - 5 \times 3) = - 1 \times 17 + 6 \times 3 
+\end{align*}
+$$
+
+</v-click>
+
+<v-click>
+
+这样，我们就找到了满足条件的$(x,y)=(6,1)$，使得
+
+$$ 3x - 17y = 1 $$
+
+我们也就找到了$3$在$\mathbb{Z_{17}}$中的乘法逆元，即$3^{-1} = 6$。那么$5 \times 3^{-1} = 5 \times 6 = 30 \equiv 13 \pmod{17}$。
+
+</v-click>
 
 ---
 
-### unlinkat
+## 扩展欧几里得算法
 
-WARNING: this implementation is wholly TESTCASE ORIENTED (because the testcase delete the new dir just after `mkdir` it). **So please rewrite this implementation!!!**
+有了以上的理论基础，我们便可以编写一个在$\mathbb{Z_p}$上求乘法逆元的函数：
 
-```c
-// TODO: rewrite this function
-int unlinkat(int dirfd, const char *pathname, int flags) {
-    if (pathname[0] == '.') {
-        pathname += 2;
+```cpp
+int exgcd(int a, int b, int &x, int &y) { // C++ 左值引用，可以修改 x 和 y 的值
+    if (b == 0) {
+        x = 1;
+        y = 0;
+        return a;
     }
+    int d = exgcd(b, a % b, x, y);
+    // (x, y) -> (y, x - a / b * y)
+    int z = x;
+    x = y;
+    y = z - a / b * y;
+    return d;
+}
 
-    for (int i = 0; i < inode_cnt; i++) {
-        if (strcmp(name_by_inode[i], pathname) == 0) {
-            inode_cnt--;
-            return 0;
-        }
-    }
-
-    return -1; // Directory not found
+int inv(int a, int p) { // 求 a 在 Z_p 上的乘法逆元
+    int x, y;
+    int d = exgcd(a, p, x, y);
+    return (x % p + p) % p; // 保证返回值在 [0, p) 之间
 }
 ```
+
+<v-click>
+
+其时间复杂度与辗转相除法相同，为$O(\log_{\varphi} a)$。
+
+</v-click>
+
+---
+
+## 扩展欧几里得算法代码分析
+
+为了方面初次接触的同学理解，我对代码进行了简单的插桩，得到了如下递归结果：
+
+```cpp
+exgcd(3, 17, 30170, 1651076199)
+  exgcd(17, 3, 30170, 1651076199)
+    exgcd(3, 2, 30170, 1651076199)
+      exgcd(2, 1, 30170, 1651076199)
+        exgcd(1, 0, 30170, 1651076199)
+        exgcd(1, 0, 1, 0) = 1
+      exgcd(2, 1, 0, 1) = 1
+    exgcd(3, 2, 1, -1) = 1
+  exgcd(17, 3, -1, 6) = 1
+exgcd(3, 17, 6, -1) = 1
+6
+```
+
+<v-click>
+
+首先算法的前半段跟普通的辗转相除法是一样的，没有什么特别需要说明的地方。
+
+重点是后面的回溯过程，我们来看看这个过程如何跟之前我们的手算过程对应起来。
+
+</v-click>
+
+---
+
+```cpp
+        exgcd(1, 0, 1, 0) = 1
+      exgcd(2, 1, 0, 1) = 1
+    exgcd(3, 2, 1, -1) = 1
+  exgcd(17, 3, -1, 6) = 1
+exgcd(3, 17, 6, -1) = 1
+```
+
+- 第一步，我们赋值$(x,y) \rightarrow (1,0)$，即 $1 = 1 \times 1 + 0 \times 0$。
+
+<v-click>
+
+- 第二步，我们将$(x,y) \rightarrow (y,x - \lfloor\frac{a}{b}\rfloor \times y)$，即$(1,0) \rightarrow (0,1)$。
+
+$$ 1 = 1 \times 1 + (2 - \lfloor\frac{2}{1}\rfloor \times 1) \times 1 = 2 \times 0 + 1 \times 1 $$
+
+</v-click>
+
+<v-click>
+
+- 第三步，我们将$(x,y) \rightarrow (y,x - \lfloor\frac{a}{b}\rfloor \times y)$，即$(0,1) \rightarrow (1,-1)$。
+
+$$ 1 = 2 \times 0 + (3-\lfloor\frac{3}{2}\rfloor \times 2)\times 1 = 3 \times 1 + 2 \times (-1)$$
+
+</v-click>
+
+<v-click>
+
+- 第四步，我们将$(x,y) \rightarrow (y,x - \lfloor\frac{a}{b}\rfloor \times y)$，即$(1,-1) \rightarrow (-1,6)$。
+
+$$ 1 = 3 \times 1 + (17 - \lfloor\frac{17}{3}\rfloor \times 3) \times (-1) = 17 \times (-1) + 3 \times 6 $$
+
+</v-click>
+
+<v-click>
+
+- 第五步后，我们得到了满足条件的$(x,y)=(6,-1)$，即$(-1, 6) \rightarrow (6, -1)$。
+
+</v-click>
