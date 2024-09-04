@@ -371,8 +371,8 @@ $$ 5 \div 3 = 5 \times 3^{-1} $$
 
 ```cpp
 int inv(int x) {
-    for (int i = 0; i < 7; i++) {
-        if (x * i % 7 == 1) {
+    for (int i = 0; i < 17; i++) {
+        if (x * i % 17 == 1) {
             return i;
         }
     }
