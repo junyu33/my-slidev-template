@@ -297,25 +297,137 @@ $$ x : 1 = 1 : (x - 1) \land x > 0 $$
 
 <v-click>
 
-我们换一种思路，如果我们求出相邻的斐波那契数的比值，如果这个比值是无限接近于黄金分割比例，那么我们就可以证明这个结论（无 $\epsilon-\delta$ 版本，不够严谨）。
+我们换一种思路，如果我们求出相邻的斐波那契数的比值，如果这个比值是无限接近于黄金分割比例$\phi$，那么我们就可以证明这个结论。
 
 </v-click>
 
 <v-click>
 
-假设这个极限存在，设其为 $L$，即 $L = \lim_{n \to \infty} \frac{F_{n+1}}{F_n}$。根据 fibonacci 数列的递推关系 $F_{n+1} = F_n + F_{n-1}$，我们可以写出：
+首先我们设 $f(n) = \frac{F_{n+1}}{F_n}$，那么根据单调收敛定理，如果我们有以下结论：
 
-$$
-\frac{F_{n+1}}{F_n} = \frac{F_n + F_{n-1}}{F_n} = 1 + \frac{F_{n-1}}{F_n}
-$$
+1. $|f(n)-\phi|$ 单调递减。
+2. 若$f(n)-\phi=0$，那么$f(n+1)-\phi=0$。
 
-当 $n$ 很大时，$\frac{F_{n-1}}{F_n}$ 也接近 $\frac{1}{L}$：
+那就可以证明 $\lim_{n \to \infty} f(n) = \phi$。
 
-$$
-L = 1 + \frac{1}{L}
-$$
+</v-click>
 
-解这个方程，我们可以得到 $L = \frac{1 + \sqrt{5}}{2}$，这样第二部分就证明完了。
+<v-click>
+
+关于第二条，我们假设 $\frac{F_{n+1}}{F_n} = \phi$，那么我们可以得到：
+
+$$ f(n+1)=\frac{F_{n+2}}{F_{n+1}} = \frac{F_{n+1} + F_n}{F_{n+1}} = 1 + \frac{F_n}{F_{n+1}} = 1 + \frac{1}{\phi} = \frac{\phi + 1}{\phi} = \phi$$
+
+</v-click>
+
+---
+
+## 辗转相除法与 fibonacci 数列（有点难）
+
+第一条的证明要稍微复杂一点，我们需要首先证明 $f(n)-\phi$在$0$附近上下波动，再证明这个波动逐渐减小。
+
+<v-click>
+
+如果 $\frac{F_i}{F_{i-1}} > \phi$，那么 $\frac{F_{i+1}}{F_i} = 1 + \frac{F_{i-1}}{F_i} = 1 + \frac{1}{\phi} < \phi$。
+
+如果 $\frac{F_i}{F_{i-1}} < \phi$，那么 $\frac{F_{i+1}}{F_i} = 1 + \frac{F_{i-1}}{F_i} = 1 + \frac{1}{\phi} > \phi$。
+
+</v-click>
+
+<v-click>
+
+然后，我们可以使用数学归纳法证明，$|f(n)-\phi|$单调递减。
+
+</v-click>
+
+<v-click>
+
+我们取$N = 1$，有
+
+$|f(N)-\phi| = \frac{1}{1} - \phi = |1 - \phi| \approx 0.618$， 
+
+$|f(N+1)-\phi| = \frac{2}{1} - \phi = |2 - \phi| \approx 0.382$。
+
+故 $|f(N)-\phi| > |f(N+1)-\phi|$。
+
+</v-click>
+
+<v-click>
+
+现在假设当 $N = K$ 时，$|f(N)-\phi| > |f(N+1)-\phi|$，把式子展开后可以得到：
+
+$$ |\frac{F_{K+1}}{F_K} - \phi| > |\frac{F_{K+2}}{F_{K+1}} - \phi| $$
+
+</v-click>
+
+---
+
+## 辗转相除法与 fibonacci 数列（有点难）
+
+我们现在假设 $2 \nmid K$，则可以去掉绝对值符号，得到：
+
+$$ \phi - \frac{F_{K+1}}{F_K} > \frac{F_{K+2}}{F_{K+1}} - \phi $$
+
+<v-click>
+
+我们设 $x = \frac{F_{K+1}}{F_K}$，可以得到不等式：
+
+$$ x + \frac{1}{x} < 2\phi - 1 $$
+
+因为 $x > 1$，我们可以解得 $x \in (1, \phi)$。
+
+</v-click>
+
+<v-click>
+
+然后因为 $|\frac{F_{K+1}}{F_K} - \phi| > |\frac{F_{K+2}}{F_{K+1}} - \phi|$ 是假设的已知条件。根据数学归纳法我们需要证明，$|\frac{F_{K+2}}{F_{K+1}} - \phi| > |\frac{F_{K+3}}{F_{K+2}} - \phi|$。
+  
+</v-click>
+
+<v-click>
+
+去绝对值号：
+
+$$ \frac{F_{K+2}}{F_{K+1}} - \phi > \phi - \frac{F_{K+3}}{F_{K+2}} $$
+
+</v-click>
+
+
+---
+
+## 辗转相除法与 fibonacci 数列（有点难）
+
+<style>.right {float: right;}</style>
+
+用 $x$ 替代原式得：
+
+$$ \frac{x+1}{x} - \phi > \phi - \frac{2x+1}{x+1} $$
+
+<v-click>
+
+解得 $x < \phi$，而因为 $(1, \phi) \subseteq (-\infty, \phi)$，所以可以推得欲证的结论。
+
+</v-click>
+
+<v-click>
+
+当 $2 \mid K$ 的情况同理，这里就不再赘述。这样第一条（$|f(n)-\phi|$ 单调递减）就证明完了。
+
+因此，我们最终证明了 $\lim_{n \to \infty} f(n) = \phi$。
+
+</v-click>
+
+<v-click>
+
+根据上述结论，我们可以得到 fibonacci 数列的通项公式近似于底数为$\phi$的指数数列。因此，这个数列的大概第$log_{\phi}N$项就能超过$N$。
+
+</v-click>
+
+<v-click>
+
+综上，我们可以得到辗转相除法的时间复杂度为$O(\log_{\phi} \min(m, n))$。
+
+<span class="right">$\blacksquare$</span>
 
 </v-click>
 
