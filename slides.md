@@ -586,7 +586,7 @@ int inv(int a, int p) { // 求 a 在 Z_p 上的乘法逆元
 
 <v-click>
 
-其时间复杂度与辗转相除法相同，为$O(\log_{\varphi} a)$。
+其时间复杂度与辗转相除法相同，为$O(\log_{\phi} a)$。
 
 </v-click>
 
