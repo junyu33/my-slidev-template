@@ -328,9 +328,9 @@ $$ f(n+1)=\frac{F_{n+2}}{F_{n+1}} = \frac{F_{n+1} + F_n}{F_{n+1}} = 1 + \frac{F_
 
 <v-click>
 
-如果 $\frac{F_i}{F_{i-1}} > \phi$，那么 $\frac{F_{i+1}}{F_i} = 1 + \frac{F_{i-1}}{F_i} = 1 + \frac{1}{\phi} < \phi$。
+如果 $\frac{F_i}{F_{i-1}} > \phi$，那么 $\frac{F_{i+1}}{F_i} = 1 + \frac{F_{i-1}}{F_i} < 1 + \frac{1}{\phi} = \phi$。
 
-如果 $\frac{F_i}{F_{i-1}} < \phi$，那么 $\frac{F_{i+1}}{F_i} = 1 + \frac{F_{i-1}}{F_i} = 1 + \frac{1}{\phi} > \phi$。
+如果 $\frac{F_i}{F_{i-1}} < \phi$，那么 $\frac{F_{i+1}}{F_i} = 1 + \frac{F_{i-1}}{F_i} > 1 + \frac{1}{\phi} = \phi$。
 
 </v-click>
 
