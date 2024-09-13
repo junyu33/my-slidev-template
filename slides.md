@@ -659,3 +659,20 @@ $$ 1 = 3 \times 1 + (17 - \lfloor\frac{17}{3}\rfloor \times 3) \times (-1) = 17 
 - 第五步后，我们得到了满足条件的$(x,y)=(6,-1)$，即$(-1, 6) \rightarrow (6, -1)$。
 
 </v-click>
+
+---
+
+## 参考资料
+
+- 欧几里得算法： https://en.wikipedia.org/wiki/Euclidean_algorithm
+
+## 归档
+
+- https://github.com/junyu33/my-slidev-template  （20240903 branch，厚颜无耻地求你们给我点个star）
+- https://blog.junyu33.me
+
+## 联系方式
+
+- mail: helloworld@junyu33.me
+- qq: 2658799217
+- wechat id: qw3rty6174
