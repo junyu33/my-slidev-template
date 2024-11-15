@@ -1,11 +1,7 @@
-# Welcome to [Slidev](https://github.com/slidevjs/slidev)!
+# talks assembly
 
-To start the slide show:
+My collection of talks, presentations.
 
-- `npm install`
-- `npm run dev`
-- visit http://localhost:3030
+Use [slidev](https://sli.dev)
 
-Edit the [slides.md](./slides.md) to see the changes.
-
-Learn more about Slidev on [documentations](https://sli.dev/).
+Also sync to my personal blog.
