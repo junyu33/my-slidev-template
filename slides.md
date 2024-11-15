@@ -157,27 +157,27 @@ DEF: PRG is unpreditable if it is not predictable.
 
 ## Semantic Security (Indistinguishability)
 
-![](semantic.png)
+<img src="https://img.junyu33.me/slidev/imgs/semantic.png">
 
 DEF: $E$ is semantically secure if for all efficient adversary $A$, $Adv_{ss}[A,E]$ is negligible.
 
 ---
 
-![alt text](image.png)
+<img src="https://img.junyu33.me/slidev/imgs/image.png" width="80%">
 
 ---
 
-![alt text](image-1.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-1.png">
 
 ---
 
-![alt text](image-2.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-2.png" width="75%">
 
 ---
 
 ## PRF and PRP
 
-In previous slides we discussed about PRG, which is widely used in block ciphers. Next we'll introduce PRF (pseudo random function) and PRP (pseudo random permutation).
+In previous slides we discussed about PRG, which is widely used in stream ciphers. Next we'll introduce PRF (pseudo random function) and PRP (pseudo random permutation).
 
 <v-click>
 
@@ -212,7 +212,7 @@ QUESTION: PRF can construct PRG easily, please provide an example.
 
 Security requirements of PRF (*Introduction to Modern Cryptography, page 79*):
 
-![alt text](image-3.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-3.png">
 
 <v-click>
 
@@ -226,7 +226,7 @@ This equation means you can't use any method to tell which is which (PRF and TRF
 
 Security requirements of PRP (*Introduction to Modern Cryptography, page 80*):
 
-![alt text](image-4.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-4.png">
 
 <v-click>
 
@@ -246,14 +246,14 @@ QUESTION: Please write 2 real-world examples of secure PRP.
 
 ---
 
-![alt text](image-5.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-5.png">
 
 
 ---
 
 ## CPA Security
 
-![alt text](image-6.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-6.png">
 
 <v-click>
 
@@ -275,7 +275,7 @@ In fact, all deterministic encryption algorithm don't have CPA security. The pro
 
 <v-click>
 
-![alt text](image-7.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-7.png">
 
 </v-click>
 
@@ -294,7 +294,7 @@ So how to solve this?
 
 DEF: Message authentication code $I=(S,V)$ defined over	$(\mathcal{K},\mathcal{M},\mathcal{T})$ is a pair of algs:
 
-![alt text](image-9.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-9.png">
 
 - $S(k,m)$ outputs $t$ in $\mathcal{T}$
 - $V(k,m,t)$ outputs "yes" or "no".
@@ -309,7 +309,7 @@ QUESTION: Can MAC be constructed by PRF?
 
 And it comes to the security definition:
 
-![alt text](image-8.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-8.png">
 
 ---
 
@@ -409,7 +409,7 @@ HARDER QUESTION: How many integers (chosen from $[1,B]$) do you expect to choose
 
 ## CCA Security
 
-![alt text](image-10.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-10.png">
 
 ---
 
@@ -421,7 +421,7 @@ $$ Adv_{CCA}[A,E]= | Pr[EXP(0)=1]-Pr[EXP(1)=1] | \le \text{negl}$$
 
 And we have a concrete example: CBC with rand. IV is not CCA-secure (insecure under active attacks).
 
-![alt text](image-11.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-11.png">
 
 </v-click>
 
@@ -459,7 +459,7 @@ DEF: cipher $(E,D)$ provides AE if it is:
 
 ---
 
-![alt text](image-12.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-12.png">
 
 ---
 
@@ -481,7 +481,7 @@ QUESTION: We often combine MAC and ENC together to achieve AE, so which of the i
 
 The SSH way is obviously wrong, because let $tag = S(k_I, m)$ already exposes some information about $m$.
 
-The SSL way is sometimes correct if $(E,D)$ provides randomized encryption like rand-CTR or rand-CBC. Otherwise it may be insecure (image $(E,D)$ using OTP).
+The SSL way is sometimes correct if $(E,D)$ provides randomized encryption like rand-CTR or rand-CBC. Otherwise it may be insecure (imagine $(E,D)$ using OTP).
 
 Therefore, the answer is IPSec (encrypt then MAC), it is always correct.  
 
@@ -545,7 +545,7 @@ The solution to this problem is **never encrypts same message twice**. This happ
 
 ---
 
-![alt text](image-14.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-14.png">
 
 <v-click>
 
@@ -587,7 +587,7 @@ Then $E_{det}$ is sem. sec. under det. CPA.
 
 To modify SIV a little bit, we can get deterministic authenticated encryption (DAE) using CTR mode.
 
-![alt text](image-16.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-16.png">
 
 <v-click>
 
@@ -599,13 +599,13 @@ There are also ways to expand PRP from $\{0,1\}^n$ to $\{0,1\}^N$ where $N \gg n
 
 ---
 
-![alt text](image-15.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-15.png">
 
 ---
 
 ## Symmetric Encryption Summary
 
-![](output.jpg)
+<img src="https://img.junyu33.me/slidev/imgs/output.jpg">
 
 ---
 
@@ -644,7 +644,7 @@ Suppose we have a symmetric cipher $E(k,m)$ with $k \in \{0, 1\}^{128}$.
 <v-click>
 
 Alice: 
-- Prepare $2^{32}$ puzzles, for $i = 1,2,\cdots,32$, choose rand. $P_i \in \{0, 1\}^{32}$ and $(x_i, k_i) \in \{0,1\}^{128}$.
+- Prepare $2^{32}$ puzzles, for $i = 1,2,\cdots,2^{32}$, choose rand. $P_i \in \{0, 1\}^{32}$ and $(x_i, k_i) \in \{0,1\}^{128}$.
 - Set $puzzle_i = E(0^{96}||P_i, \text{ "Puzzle \#}x_i\text{" } || k_i)$.
 - Send $\{puzzle_i\}_{1,2,\cdots,2^{32}}$ to Bob.
 
@@ -735,7 +735,7 @@ QUESTION: What level of security does public key encryption at least satisfiy?
 
 ## CCA Security for Public Key Encryption
 
-![alt text](image-19.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-19.png">
 
 DEF: E is CCA secure if for all "eff" A: $Adv_{CCA}[A,E]=|Pr[\text{EXP}(0)=1]-[Pr[\text{EXP}(1)=1]| \le \text{negl}$
 
@@ -823,7 +823,7 @@ since $\varphi(N)=N-p-q+1$, $|N-\varphi(N)| \le p + q \le 3 \sqrt{N}$
 
 $$ d \le N^{0.25}/3 \Rightarrow |\frac{e}{N} - \frac{k}{d}| \le |\frac{e}{N} - \frac{e}{\varphi(N)}| + |\frac{e}{\varphi(N)} - \frac{k}{d}| = |\frac{e(\varphi(N)-N)}{N\cdot \varphi(N)}| + |\frac{e}{\varphi(N)} - \frac{k}{d}|$$
 
-$$ <= \frac{3\sqrt{N}}{N} + \frac{\sqrt{N}}{N}=\frac{4}{\sqrt{N}} < \frac{1}{2d^2}$$
+$$ \le \frac{3\sqrt{N}}{N} + \frac{\sqrt{N}}{N}=\frac{4}{\sqrt{N}} < \frac{1}{2d^2}$$
 
 </v-click>
 
@@ -931,7 +931,7 @@ $D(\text{sk}=a,(u,c)):$
 
 ## ElGamal CCA Security
 
-In previous sections, we know basic ElGamal protocol relies on Dlog problem, just as same as Diffie-Hellman key exchange. However, it is vulnerable to MitM attacks. So the question is:
+In previous sections, we know basic ElGamal protocol relies on Dlog problem, just as same as Diffie-Hellman key exchange. Since DHKE only provides eavesdropping security, the question is:
 
 QUESTION: Does modern version of ElGamal provide CCA security?
 
@@ -941,7 +941,7 @@ To solve this question, let's look at several security assumptions:
 - Hash DH (HDH): $H: G^2 \rightarrow K$ as a hash function, $(g, g^a, g^b, H(g^b, g^{ab})) \approx_p (g, g^a, g^b, R)$.
 - Interactive DH (IDH): for all "eff" $A$, $Pr[A \text{ outputs } g^{ab}] < \text{negl}$.
 
-![alt text](image-21.png)
+<img src="https://img.junyu33.me/slidev/imgs/image-21.png">
 
 ---
 
@@ -994,7 +994,7 @@ Another popular variant is ElGamal on ECC (ECELG), you will learn/have already l
 
 ## Public Key Encryption Summary
 
-![](Unsaved%20Image%202.jpg)
+<img src="https://img.junyu33.me/slidev/imgs/Unsaved%20Image%202.jpg">
 
 ---
 layout: end
