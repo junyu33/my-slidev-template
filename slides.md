@@ -115,7 +115,7 @@ DEF: In *Foundations of Cryptography: Basic Tools, page 113*, we define pseudo r
 > A pseudorandom generator is a deterministic polynomial-time algorithm $G$ satisfying the following 2 conditions:
 >
 > 1. There exists a function $l: \mathbb{N} \rightarrow \mathbb{N} \text{ s.t. } \forall n \in \mathbb{N}, l(n) > n \text{ and }  \forall s \in \{0, 1\}^*,  |G(s)| = l(|s|)$
-> 2. Pseudorandomness: The ensemble $\{G(U_n)\}_{n \in \mathbb{N}}$ is pseudorandom (unpreditable). 
+> 2. Pseudorandomness: The ensemble $\{G(U_n)\}_{n \in \mathbb{N}}$ is pseudorandom (unpredictable). 
 >
 > The function $l$ is called the expansion factor of $G$, and the input $s$ to the generator is called its seed.
 >
@@ -149,7 +149,7 @@ $$ Pr_{k \overset{R}{\leftarrow} \mathcal{K}}[A(G(k))|_{1,\cdots,i} = G(k)|_{i+1
 
 for non-negligible $\varepsilon$ (e.g. $\varepsilon = \frac{1}{2^{30}}$)
 
-DEF: PRG is unpreditable if it is not predictable.
+DEF: PRG is unpredictable if it is not predictable.
 
 </v-click>
 
