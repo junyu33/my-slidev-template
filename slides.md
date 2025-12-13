@@ -316,7 +316,7 @@ $P_0, P_1$ 分别持有布尔共享的一位 $c = c_0 \oplus c_1, c \in \{0,1\}$
 
 ### $\mathcal{F}_{ZExt}$
 
-我们有了前面的 $\mathcal{F}_{Wrap}$ 和 $\mathcal{F}_{B2A}$，构造 $\mathcal{F}_{ZExt}$ 便是自然的事情。对于 $m$-bit 的加法共享，我们尝试将其零扩展到 $n$-bit $(n>m)$。首先，我们要 check 这两个 share 是否有进位（使用 $\mathcal{F}_{Wrap}$）,然后将得到的布尔进位 $w$ 使用 $\mathcal{F}_{B2A}$ 转为 $Z_{2^{n-m}}$ 的算术值。
+我们有了前面的 $\mathcal{F}_{Wrap}$ 和 $\mathcal{F}_{B2A}$，构造 $\mathcal{F}_{ZExt}$ 便是自然的事情。对于 $m$-bit 的加法共享，我们尝试将其零扩展到 $n$-bit $(n>m)$。首先，我们要 check 这两个 share 是否有进位（使用 $\mathcal{F}_{Wrap}$），然后将得到的布尔进位 $w$ 使用 $\mathcal{F}_{B2A}$ 转为 $Z_{2^{n-m}}$ 的算术值。
 
 <v-click>
 
@@ -330,6 +330,98 @@ $P_0, P_1$ 分别持有布尔共享的一位 $c = c_0 \oplus c_1, c \in \{0,1\}$
 
 ### $\mathcal{F}_{TR}$
 
-既然我们有了从小到大的 $\mathcal{F}_{ZExt}$，那自然也有反过来的 $\mathcal{F}_{TR}$.
+既然我们有了从小到大的 $\mathcal{F}_{ZExt}$，那自然也有反过来的 $\mathcal{F}_{TR}$。我们假设从 $l$-bit 截断低位的 $s$-bit，并输出最终的高位 $l-s$-bit：
+
+SETUP: $P_b$ 将原来的 share $x_b$ 拆成 $u_b||v_b$，前者为 $l-s$ 位，后者为 $s$ 位，可以证明：
+
+$$ TR(x, s) = u_0+u_1+Wrap(v_0,v_1,s) $$
+
+开销为 $\text{Comm}(\mathcal{F}_{Wrap}+\mathcal{F}_{B2A})=(\lambda s + 14s) + (\lambda + (l - s)) = \lambda(s+1) + 13s + l$.
+
+</v-click>
+
+---
+
+### $\mathcal{F}_{CrossTerm}$
+
+$\mathcal{F}_{CrossTerm}$ 与用 beaver triple 的安全乘法比较相近，但区别是后者 $P_0$ 和 $P_1$ 都知道 $x$ 和 $y$ 的一部分 share。而 $\mathcal{F}_{CrossTerm}$ 的适用条件是 $P_0$ 独占 $x$，$P_1$ 独占 $y$，最后各自获得长度 $l=m+n$ 的 $x*y$ 的 share. 
+
+<v-click>
+
+- $P_0$ 将自己的 $x$ 写成二进制 $x=\sum_{i=0}^{m-1} x_i 2^i, \quad x_i \in \{0, 1\}$.
+
+</v-click>
+
+<v-click>
+
+- 对 $i \in [0, m-1]$, 调用 1-out-of-2 $\text{COT}_{l-i}$：$P_0$ 持有 $x_i$，$P_1$ 持有 $y$，生成 $⟨t_i⟩^{l-i}$ 满足 $t_i=x_i \cdot y$.
+
+</v-click>
+
+<v-click>
+
+- 双方本地计算 $⟨z⟩^l=\sum_{i=0}^{m-1} ⟨t_i⟩^{l-i}$，显然两个share加起来就是乘积$x \cdot y$.
+
+</v-click>
+
+<v-click>
+
+总通信成本为 $\sum_{i=0}^{m-1} (\lambda + (l - i))=m\lambda+ml-\frac{m(m-1)}{2}=O(m\lambda+mn)$.
+
+</v-click>
+
+<v-click>
+
+### $\mathcal{F}_{UMult}$
+
+语义是双方持有 $x = x_0 + x_1 \pmod{2^m}, \quad y = y_0 + y_1 \pmod{2^n}$，目标是计算 $z = x \cdot y \in Z_{2^{m+n}}$.
+
+这里还是不能直接做 beaver triple，因为它是 ring agnostic 的，可能会带来未知的 wrap 问题。当然一个办法是将 $x,y$ 都扩展到足够大的环，做安全乘法后又截断回去。当然这里有两个问题，一是 $\mathcal{F}_{TR}$ 是高位截断而不是低位截断，协议需要稍微改一改；二是这种办法运算成本较高，不如接下来介绍的专用 $\mathcal{F}_{UMult}$ 协议。
+
+</v-click>
+
+---
+
+我们现在要计算$(x_0+x_1)(y_0+y_1)=x_0y_0+x_1y_1+x_0y_1+x_1y_0$，前两者可以分别由 $P_0,P_1$ 离线完成。而后两者就涉及到刚才的 $\mathcal{F}_{CrossTerm}$ 了。总之，我们有了在 $P_0$ 存储的完整 $x_0y_0$，$P_1$ 存储的 $x_1y_1$，以及双方都拥有的 $⟨x_0y_1⟩, ⟨x_1y_0⟩$ 的一部分。$\mathcal{F}_{UMult}$ 的作用就是把这 4 项安全地拼起来，并且处理 wrap 的问题。
+
+<v-click>
+
+- 首先，我们要考虑 $x_0+x_1, y_0+y_1$ 是否溢出的问题，因此需要 $\mathcal{F}_{Wrap}$ 进行检测得到两个溢出位 $w_x, w_y$。
+
+</v-click>
+
+<v-click>
+
+- 然后我们可以利用 $\mathcal{F}_{MUX}$ 计算 `g=w_y?x:0` 与 `h=w_x:y:0`的 share $⟨g⟩,⟨h⟩$，处理可能的溢出差值。
+
+</v-click>
+
+<v-click>
+
+- 最终 $P_b$ 输出 $x_by_b+⟨x_0y_1⟩_b+⟨x_1y_0⟩_b-2^n⟨g⟩_b-2^m⟨h⟩_b$.
+
+</v-click>
+
+<v-click>
+
+尝试把两个 share 加起来看看：$\sum_b (x_by_b+⟨x_0y_1⟩_b+⟨x_1y_0⟩)=(x_0+x_1)(y_0+y_1)$
+
+而 $\sum_b (-2^n⟨g⟩_b-2^m⟨h⟩_b)=-2^ng-2^mh=-2^n(w_y\cdot x)-2^m(w_x\cdot y)$
+
+</v-click>
+
+<v-click>
+
+合在一起，$z=(x_0+x_1)(y_0+y_1)-w_y\cdot(x\cdot 2^n)-w_x\cdot(y\cdot 2^m)$
+
+$=(x+w_x2^m)(y+w_y2^n)-w_y\cdot(x\cdot 2^n)-w_x\cdot(y\cdot 2^m)=xy$，刚好抵消。
+
+</v-click>
+
+<v-click>
+
+设$\nu=\max(m,n),l=m+n$，论文给出了具体的开销，数量级为 $O(\lambda \nu + \nu^2)$。相比于 beaver triple 做法（含生成乘法三元组）的 $O(\lambda l+l^2)$ 数量级相同，但论文声称 $\mathcal{F}_{UMult}$ 通信少 $1.5 \times$. 
+
+$\mathcal{F}_{SMult}$ 与 $\mathcal{F}_{UMult}$ 原理类似，通信量完全相同，这里就略过了。
 
 </v-click>
