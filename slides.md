@@ -1,1003 +1,335 @@
-# The Missing Lecture of Your Cryptography
-
-junyu33
-
-2024/11/21
+# SecFloat: Accurate Floating-Point meets Secure  2-Party Computation
 
 ---
 
-## Review of Probability Theory
+## Background
 
-DEF: We define $S^n$ as a vector (concatenation) of elements in set $S$, for example:
-
-- $(010)$ is an element in ${\{0, 1}\}^3$
-
-So there are $|S|^n$ elements in $S^n$, where $|A|$ ($\#A$) repesents the number of elements in set $A$ (cardinality).
+Notation: 记安全参数为 $\lambda$, 秘密共享的整数长度为 $l$-bit.
 
 <v-click>
 
-DEF: **Probability distribution** $P$ over universe $U$ (finite) is a function $P$, which satisfies:
+MPC方面，假设我们拥有以下基础知识：
 
-- $\forall x \in U, P(x) \ge 0$
-- $\sum_{x \in U} P(x) = 1$
-
-for example:
-
-1. uniform distribution: $\forall x \in U, P(x) = \frac{1}{\mid U \mid}$
-2. point distribution at $x_0$: $P(x_0) = 1, \forall x \ne x_0, P(x) = 0$
+- 可以使用基于公钥密码等方式实现 1-out-of-$k$ $\text{OT}_l$，单次通信量 $2\lambda+kl$。
+- 基于 2-party 的加法 secret sharing 的加法与标量乘几乎免费（无通信开销）。
+- 可以使用 beaver triple 实现 2-party 的安全乘法操作。一次安全乘法，总通信量为 $2l$。
 
 </v-click>
 
 <v-click>
 
-QUESTION: please describe the probability distribution when you roll up a dice.
+在浮点数储存方面，我们使用 IEEE754 Float32（单精度标准）：
+
+- $(-1)^S \times (1.M) \times 2^{E-bias}$
+- 符号位 $S$ 1位、指数为 $E$ 7 位、尾数 $M$ 为 23 位、$bias=127$
+- 四舍六入五成双（round-to-nearest-ties-to-even）
 
 </v-click>
 
----
-
-DEF: For a set $A \subseteq U$, $Pr[A] = \sum_{x \in A} P(x) \in [0,1]$, the set $A$ is called an **event**:
-
-<v-click>
-
-for example:
-
-1. $Pr[U] = 1$
-2. If $U = {\{0, 1}\}^3$ and $x \in U$, $Pr[lsb_2(x)=11]=\frac{1}{4}$
-3. For events $A_1$ and $A_2$, $Pr[A_1 \cup A_2] \le Pr[A_1] + Pr[A_2]$ 
-
-</v-click>
-
-<v-click>
-
-DEF: A **ramdom varible** $X$ is a function $X$: $U \rightarrow V$, for example:
-
-$X: \{0,1\}^n \rightarrow \{0,1\}$, $X(y) = lsb(y)$, we have:
-
-$Pr[X=0]=Pr[X=1]=\frac{1}{2}$
-
-</v-click>
-
-<v-click>
-
-DEF: Specifically, a **uniform ramdom varible** is a ramdom varible which satisfies:
-
-$r \overset{R}{\leftarrow} U, Pr[r=a] = \frac{1}{\mid U \mid}$
-
-</v-click>
-
-<v-click>
-
-QUESTION: please write two uniform ramdom varibles where $U = \{1, 2, 3, 4 ,5\}$ 
-
-</v-click>
-
----
-
-## Perfect Secrecy
-
-DEF: A cipher $(E, D)$ over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$ has **perfect secrecy** if:
-
-$$\forall m_0, m_1 \in \mathcal{M}, len(m_0) = len(m_1) \land \forall c \in \mathcal{C}$$
-
-$$ Pr[E(k, m_0) = c] = Pr[E(k, m_1) = c] $$
-
-where $k$ is uniform in $\mathcal{K}$, i.e. ($k \overset{R}{\leftarrow} \mathcal{K}$)
-
-<v-click>
-
-The bad news is to satisfy this condition, we must have $|\mathcal{K}| \ge |\mathcal{M}|$, which makes it hard to use in practice.
-
-As we have learned eariler, OTP (One-Time-Pad) is an example of cipher scheme which satisfies perfect secrecy.
-
-</v-click>
-
-<v-click>
-
-QUESTION: Let $\mathcal{M} = \mathcal{C} = \mathcal{K} = \{0, 1, 2, \cdots, 255\}$ and consider the following cipher defined over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$
-
-$$ E(k,m) = m + k \pmod {256}; D(k, c) = c - k \pmod {256} $$
-
-Does this cipher have perfect secrecy?
-
-</v-click>
-
----
-
-## Pseudo Random Generator (PRG)
-
-So what will happen if we expand the ciphertext from OTP? Then it comes to the PRG:
-
-<v-click>
-
-DEF: In *Foundations of Cryptography: Basic Tools, page 113*, we define pseudo random generator $G$ as this:
-
-> A pseudorandom generator is a deterministic polynomial-time algorithm $G$ satisfying the following 2 conditions:
->
-> 1. There exists a function $l: \mathbb{N} \rightarrow \mathbb{N} \text{ s.t. } \forall n \in \mathbb{N}, l(n) > n \text{ and }  \forall s \in \{0, 1\}^*,  |G(s)| = l(|s|)$
-> 2. Pseudorandomness: The ensemble $\{G(U_n)\}_{n \in \mathbb{N}}$ is pseudorandom (unpreditable). 
->
-> The function $l$ is called the expansion factor of $G$, and the input $s$ to the generator is called its seed.
->
-> (Mention that $|x|$ means the length for $x$, not the cardinality.)
-
-</v-click>
-
-<v-click>
-
-One practical example of PRG is stream cipher, like RC4 and Salsa20, while the former one is found to have bias in initial output. 
-
-Anyone intrested in this, please see details in paper *Statistical Analysis of the Alleged RC4 Keystream Generator, FSE 2001*.
-
-</v-click>
-
----
-
-## Predictability (Pseudorandomness)
-
-As I said eariler, it is not practical to construct an encryption scheme which satisfies perfect secrecy. However, that doesn't mean an encryption scheme which doesn't have perfect secrecy is not secure, due to the limited power of adversary in practice.
-
-To address security in cryptography, we need to clarify a set of security defnitions such as predictability and distinguishability (in the next slide):
-
-<v-click>
-
-DEF: We say that $G: K \rightarrow \{0,1\}^n$ is **predictable** if:
-
-$$ \exists \text{eff alg. } A \text{ and } \exists_{0 \le i \le n-1} \text { s.t.}$$
-
-$$ Pr_{k \overset{R}{\leftarrow} \mathcal{K}}[A(G(k))|_{1,\cdots,i} = G(k)|_{i+1}] > \frac{1}{2} + \varepsilon $$
-
-for non-negligible $\varepsilon$ (e.g. $\varepsilon = \frac{1}{2^{30}}$)
-
-DEF: PRG is unpreditable if it is not predictable.
-
-</v-click>
-
----
-
-## Semantic Security (Indistinguishability)
-
-<img src="https://img.junyu33.me/slidev/imgs/semantic.png">
-
-DEF: $E$ is semantically secure if for all efficient adversary $A$, $Adv_{ss}[A,E]$ is negligible.
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image.png" width="80%">
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image-1.png">
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image-2.png" width="75%">
-
----
-
-## PRF and PRP
-
-In previous slides we discussed about PRG, which is widely used in stream ciphers. Next we'll introduce PRF (pseudo random function) and PRP (pseudo random permutation).
-
-<v-click>
-
-PRF is defined over $(K, X, Y)$:
-
-$$ F: K \times X \rightarrow Y $$
-
-such that exists "eff" algorithm to evalutate $F(k,x)$.
-
-</v-click>
-
-<v-click>
-
-PRP is defined over $(K, X)$:
-
-$$ E: K \times X \rightarrow X $$
-
-such that:
-
-1. exists "eff" **deterministic** algorithm to evalutate $E(k,x)$.
-2. $E(k, \cdot)$ is one-to-one, and exists "eff" inversion algorithm $D(k,y)$.
-
-</v-click>
-
-<v-click>
-
-QUESTION: PRF can construct PRG easily, please provide an example.
-
-</v-click>
-
----
-
-Security requirements of PRF (*Introduction to Modern Cryptography, page 79*):
-
-<img src="https://img.junyu33.me/slidev/imgs/image-3.png">
-
-<v-click>
-
-To be short, you can interpret $D(x)$ as binary classification function used in machine learning (only outputs 0 or 1), and $f_n(x)$ is a truly random function (TRF) chosen uniformly.
-
-This equation means you can't use any method to tell which is which (PRF and TRF), so the $1^n$ can be any n-bit string, and the right-hand side can be 0 or 1, as long as they are the same.
-
-</v-click>
-
----
-
-Security requirements of PRP (*Introduction to Modern Cryptography, page 80*):
-
-<img src="https://img.junyu33.me/slidev/imgs/image-4.png">
-
-<v-click>
-
-Just nearly the same as the PRF slide, since PRP is invertible, so we can add more constriants, like we may require the inverse function has the same property as the PRP. 
-
-Therefore, making the whole encrypt-decrypt procedure indistinguishable from the TRP is necessary.
-
-Someone may say this is boring, but that's what formality does.
-
-</v-click>
-
-<v-click>
-
-QUESTION: Please write 2 real-world examples of secure PRP.
-
-</v-click>
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image-5.png">
-
-
----
-
-## CPA Security
-
-<img src="https://img.junyu33.me/slidev/imgs/image-6.png">
-
-<v-click>
-
-As you can see, CPA security is semantic security for many-time key senario.
-
-</v-click>
-
----
-
-QUESTION: Does OTP satisfiy CPA security? 
-
-<v-click>
-
-The answer is: NO! 
-
-In fact, all deterministic encryption algorithm don't have CPA security. The proof is as follows:
-
-</v-click>
-
-<v-click>
-
-<img src="https://img.junyu33.me/slidev/imgs/image-7.png">
-
-</v-click>
-
-<v-click>
-
-So how to solve this?
-
-1. Randomized encryption: encrypt the plaintext at random times, and decrypt according to entropy.
-2. Nonce-based encryption: CBC, CFB, CTR mode.
-
-</v-click>
-
----
-
-## Message Authentication Code (MAC)
-
-DEF: Message authentication code $I=(S,V)$ defined over	$(\mathcal{K},\mathcal{M},\mathcal{T})$ is a pair of algs:
-
-<img src="https://img.junyu33.me/slidev/imgs/image-9.png">
-
-- $S(k,m)$ outputs $t$ in $\mathcal{T}$
-- $V(k,m,t)$ outputs "yes" or "no".
-
-<v-click>
-
-QUESTION: Can MAC be constructed by PRF?
-
-</v-click>
-
----
-
-And it comes to the security definition:
-
-<img src="https://img.junyu33.me/slidev/imgs/image-8.png">
-
----
-
-## Hash Function
-
-DEF: Let $H: M \rightarrow T$ be a hash function. ($|M| \gg |T|$)
-
-A collsion for $H$ is a pair $m_0, m_1 \in M \text{ s.t: }$ 
-
-$$ H(m_0) = H(m_1) \land m_0 \ne m_1$$
-
-A function $H$ is collsion resistant if for all "eff" algs. $A$:
-
-$$ Adv_{CR}[A,H] = Pr[A \text{ outputs collsion for }H] \le \text{negl}(|M|)$$
-
-Hash function only provide collsion resistance, not existential forgery. However we can use hash functions to build secure MACs (HMAC).
-
-<v-click>
-
-QUESTION: Is hash function a PRF?
-
-</v-click>
-
----
-
-## Generic Birthday Attack
-
-First let me introduce the birthday paradox:
-
-<v-click>
-
-DEF (birthday paradox): Let $r_i \in \{1,\cdots,B\}$ be independent identically distributed integers. $Pr[\exists i\ne j: r_i = r_j] \ge \frac{1}{2}$ when $n = 1.2 \times \sqrt{B}$.
-
-</v-click>
-
-<v-click>
-
-Proof: (for uniform indep. $r_i$)
-
-$Pr[\exists i\ne j: r_i = r_j]=1-Pr[\forall i\ne j: r_i \ne r_j]=1-(\frac{B-1}{B})(\frac{B-2}{B})\cdots(\frac{B-n+1}{B})$
-
-$=1-\prod_{i=1}^{n-1}(1-\frac{i}{B}) \ge 1-\prod_{i=1}^{n-1}(e^{-i/B})=1-e^{-\frac{1}{B}\sum_{i=1}^{n-1}i} \ge 1-e^{\frac{n^2}{2B}}$
-
-Because $n = 1.2 \times \sqrt{B}$, $1 - e^\frac{n^2}{2B} = 1 - e^{0.72} = 0.53 > \frac{1}{2}$.
-
-Q.E.D.
-
-</v-click>
-
-<v-click>
-
-The reason why it is called a "paradox" is the number of people are much smaller than our expectation to achieve this probability. However, we can understand this by intuition:
-
-$N$ numbers have roughly $N^2$ pairs, so if $N^2 > B$, a collsion may appear.
-
-</v-click>
-
----
-
-Now we can introduce generic birthday attack from this paradox:
-
-<v-click>
-
-Generic alg. to find a collision in time $O(\sqrt{T})$ hashes:
-
-1. Choose $\sqrt{T}$ random messages in $M$: $\{m\}_{1,2,\cdots,\sqrt{T}}$.
-2. Compute $t_i = H(m_i)$ for $i = 1,2,\cdots,\sqrt{T}$.
-3. Look for a collision $(t_i=t_j)$. If not found, go back to step 1.
-
-</v-click>
-
-<v-click>
-
-QUESTION: What is the expected number of finding a collision using this algorithm?
-
-</v-click>
-
-<v-click>
-
-HARDER QUESTION: How many integers (chosen from $[1,B]$) do you expect to choose so that the probability of finding a triple collision (having three same numbers) is higher than 50%?
-
-</v-click>
-
-<v-click>
-
-<div class="text-center text-4xl font-bold">
-    <br><br>
-</div>
-
-<div class="text-center text-4xl font-bold">
-    TIME FOR A BREAK
-</div>
-
-</v-click>
-
----
-
-## CCA Security
-
-<img src="https://img.junyu33.me/slidev/imgs/image-10.png">
-
----
-
-$E$ is CCA secure if for all "eff" A:
-
-$$ Adv_{CCA}[A,E]= | Pr[EXP(0)=1]-Pr[EXP(1)=1] | \le \text{negl}$$
-
-<v-click>
-
-And we have a concrete example: CBC with rand. IV is not CCA-secure (insecure under active attacks).
-
-<img src="https://img.junyu33.me/slidev/imgs/image-11.png">
-
-</v-click>
-
-<v-click>
-
-Suppose Alice wants to send Bob `Borrow me $10000` (16 bytes), Eve wants to modify the 12th bit from `0x31` to `0x32`. 
-
-To do this, Eve can intercept encryption message and let `IV[11] = IV[11] ^ 0x31 ^ 0x32`, then Bob will get `Borrow me $20000` after decryption using the modified IV.
-
-</v-click>
-
----
-
-## Authenticated Encryption (AE)
-
-To solve this problem, authenticated encryption was invented to provide confidentiality against active attacks (i.e. provide CCA security).
-
-<v-click>
-
-An authenticated encryption (AE) system is a cipher where:
-
-- $E: K \times M \times N \rightarrow C$
-- $D: K \times C \times N \rightarrow M \cup \{\perp\}$
-
-</v-click>
-
-<v-click>
-
-DEF: cipher $(E,D)$ provides AE if it is:
-
-- sem. security under a CPA attack.
-- ciphertext integrity: attack cannot create new ciphertexts that decrypt properly.
-
-</v-click>
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image-12.png">
-
----
-
-## Construction of AE
-
-Since we didn't learn AE, the implementation is a little tricky for newcomers. Here is a question for you:
-
-<v-click>
-
-QUESTION: We often combine MAC and ENC together to achieve AE, so which of the implementations provide AE? Suppose encryption key is $k_E$ and MAC key is $k_I$.
-
-1. (SSL): let $tag = S(k_I, m)$, $res = E(k_E, m||tag)$.
-2. (IPSec): let $c = E(k_E, m)$, $tag = S(k_I, c)$, $res = c || tag$.
-3. (SSH): let $c = E(k_E, m)$, $tag = S(k_I, m)$, $res = c || tag$.
-
-</v-click>
-
-<v-click>
-
-The SSH way is obviously wrong, because let $tag = S(k_I, m)$ already exposes some information about $m$.
-
-The SSL way is sometimes correct if $(E,D)$ provides randomized encryption like rand-CTR or rand-CBC. Otherwise it may be insecure (imagine $(E,D)$ using OTP).
-
-Therefore, the answer is IPSec (encrypt then MAC), it is always correct.  
-
-</v-click>
-
----
-
-QUESTION: Let $(E, D)$ be an encryption system with key space $K$, message space $\{0, 1\}^n$ and ciphertext space $\{0, 1\}^s$. Suppose $(E, D)$ provides authenticated encryption. Which of the following systems provide authenticated encryption: (as usual, we use $\parallel$ to denote string concatenation)
-
-1. 
-   $$ E'(k, m) = \left( E(k, m), H(m) \right) \text{ and }
-   D'(k, (c, h)) = \begin{cases} 
-   D(k, c) & \text{if } H(D(k, c)) = h \\ 
-   \perp & \text{otherwise}
-   \end{cases}
-   $$
-
-2. 
-   $$E'(k, m) = \left[ c \leftarrow E(k, m), \text{output } (c, c) \right] \text{ and }
-   D'(k, (c_1, c_2)) = \begin{cases} 
-   D(k, c_1) & \text{if } c_1 = c_2 \\ 
-   \perp & \text{otherwise}
-   \end{cases}
-   $$
-
-3. 
-   $$E'(k, m) = \left( E(k, m), E(k, m) \right) \text{ and } D'(k, (c_1, c_2)) = D(k, c_1)$$
-
-4. 
-   $$E'((k_1, k_2), m) = E(k_2, E(k_1, m)) \text{ and } 
-   D'((k_1, k_2), c) = \begin{cases} 
-   D(k_1, D(k_2, c)) & \text{if } D(k_2, c) \neq \perp \\ 
-   \perp & \text{otherwise}
-   \end{cases}
-   $$
-
----
-
-## Deterministic Encryption (DE)
-
-Suppose we have a database containing sensitive user information, such as government ID. We want to encrypt the IDs to protect user privacy, but we still need to be able to efficiently search for specific IDs in the database. That's when deterministic encryption takes place.
-
-<v-click>
-
-Of course, deterministic encryption cannot be CPA secure, the adversary can perform this attack:
-
-Attacker can first choose $m_0, m_0$ and the server returns $c_0$.
-
-After that, attacker choose $m_0, m_1$ and server will return $c_0$ or $c_1$. Since attacker knows the content of $c_0$, it can win CPA game.
-
-</v-click>
-
-<v-click>
-
-The solution to this problem is **never encrypts same message twice**. This happens when encryptor:
-
-- Chooses messages at random from a large message space $\mathcal{M}$.
-- Message structure ensures uniqueness.
-
-</v-click>
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image-14.png">
-
-<v-click>
-
-QUESTION: Is CBC or CTR mode with fixed IV det. CPA secure?
-
-QUESTION: Is PRP det. CPA secure?
-
-</v-click>
-
----
-
-## Synthetic IV (SIV) 
-
-Although PRP is capable of building a det. encryption, PRP is not flexible because you need to build an n-bit PRP for n-bit messages. This is not convenient if you have a message with legnth $2^{20}$ bits.
-
-Synthetic IV (SIV) can solve this problem, to be specific:
-
-<v-click>
-
-Let $(E,D)$ be a CPA secure encryption: $E(k, m; r) \rightarrow c$
-
-Let $F: K \times M \rightarrow R$ be a secure PRF.
-
-DEF: 
-
-$$E_{det}((k_1, k_2), m) = \begin{cases} 
-   r \leftarrow F(k_1, m) \\ 
-   c \leftarrow E(k_2, m; r) \\
-   \text{output r} \\
-   \end{cases}$$
-
-Then $E_{det}$ is sem. sec. under det. CPA.
-
-</v-click>
-
----
-
-## Deterministic Authenticated Encryption (DAE)
-
-To modify SIV a little bit, we can get deterministic authenticated encryption (DAE) using CTR mode.
-
-<img src="https://img.junyu33.me/slidev/imgs/image-16.png">
-
-<v-click>
-
-How about using PRP to do DAE? The easiet method is to append $\lambda$ bits of zeros, and check if the decryption has $\lambda$ bits of zeros at the end. Since PRP is pseudorandom, the probability of faking an encryption is $\frac{1}{2^\lambda}$, which is negligible.
-
-There are also ways to expand PRP from $\{0,1\}^n$ to $\{0,1\}^N$ where $N \gg n$ like EME. However it is 2x slower than SIV so I'm not going to talk about it in this lecture.
-
-</v-click>
-
----
-
-<img src="https://img.junyu33.me/slidev/imgs/image-15.png">
-
----
-
-## Symmetric Encryption Summary
-
-<img src="https://img.junyu33.me/slidev/imgs/output.jpg">
-
----
-
-## Public Key Encryption Intro
-
-Suppose $N$ people wants to share information with each other without eavesdropping. 
-
-<v-click>
-
-The basic solution is to use a separate symmetric key for each pair, $O(N^2)$ keys in total. 
-
-However this is of course inefficient.
-
-</v-click>
-
-<v-click>
-
-A better solution is to use a trusted third party (TTP), if Alice and Bob wants to communicate with each other. They first store their symmetric key in TTP. In this way, they only need to save their own key, $O(N)$ keys in total.
-
-Alice can encrypt her message $c = Enc(k_A, m)$, TTP uses $k_A$ to decrypt $c$ and uses Bob's key $k_B$ to send $c'=Enc(k_B,m)$ to Bob again. Bob then use his own key to decrypt $c'$ and get $m$.
-
-</v-click>
-
-<v-click>
-
-QUESTION: So, can we do it without using TTP?
-
-</v-click>
-
----
-
-## Merkle Puzzles
-
-Suppose we have a symmetric cipher $E(k,m)$ with $k \in \{0, 1\}^{128}$.
-
-<v-click>
-
-Alice: 
-- Prepare $2^{32}$ puzzles, for $i = 1,2,\cdots,2^{32}$, choose rand. $P_i \in \{0, 1\}^{32}$ and $(x_i, k_i) \in \{0,1\}^{128}$.
-- Set $puzzle_i = E(0^{96}||P_i, \text{ "Puzzle \#}x_i\text{" } || k_i)$.
-- Send $\{puzzle_i\}_{1,2,\cdots,2^{32}}$ to Bob.
-
-</v-click>
-
-<v-click>
-
-Bob:
-
-- Choose a random puzzle $puzzle_j$ to solve it and obtain $(x_j, k_j)$.
-- Send $x_j$ to Alice.
-
-</v-click>
-
-<v-click>
-
-Complexity:
-
-- Alice: $O(n)$ time and $O(n)$ space.
-- Bob: $O(n)$ time.
-- Eve: $O(n^2)$ time.
-
-</v-click>
 
 --- 
 
-## Diffie-Hellman Key Exchange (DHKE)
+### IEEE 754 加法
 
-However, the efficiency of merkle puzzles is too low, so we have Diffie-Hellman key exchange.
+不失一般性，设 $x \ge y$，为了计算 $z=x+y$，其中：
+ 
+$$x=(-1)^{S_x} \cdot (1.M_x) \cdot 2^{E_x},\quad y=(-1)^{S_y} \cdot (1.M_y) \cdot 2^{E_y}$$
 
-- SETUP(): a large prime $p$ (e.g. 600 digits), an integers $g$ (usually primitive root).
-- Alice: choose random $a$ in $[1, p-1]$, send $A = g^a$ to Bob.
-- Bob: choose random $b$ in $[1, p-1]$, send $B= g^b$ to Alice.
-- Alice calculate $k_{AB} = B^a$, Bob calculate $k_{AB} = A^b$, then they can communicate using $k_{AB}$.
+则步骤如下：
 
 <v-click>
 
-Since $B^a = (g^b)^a = g^{ab} = (g^a)^b = A^b$, this algorithm is valid.
-
-Since knowing $g^a$ and $g^b$ is known to be hard to calculate $g^{ab}$ (Dlog problem), this algorithm provide computation security when $p$ is large enough.
-
-The known best algorithm to solve Dlog problem, GNFS, has a complexity $O(\text{exp}(n^{1/3}))$, where $n$ is the digit number of $p$.
+1. 指数对齐。若 $E_x$ > $E_y$，将 $y$ 的尾数右移： $M_y \leftarrow \frac{1.M_y}{2^{E_x-E_y}}, \quad E \leftarrow E_x, \quad M_x \leftarrow (1.M_x)$.
 
 </v-click>
 
 <v-click>
 
-However, this key exchange algorithm only provides eavesdropping security. It cannot prevent active attacks, such as MitM.
-
-</v-click>
-
----
-
-## Public Key Encryption
-
-<v-click>
-
-A different approach for key exchange is public key encryption. Here is the definition:
-
-DEF: a public-key encryption system is a triple of algs $(G, E, D)$:
-
-- $G():$ randomized alg. outputs a key pair $(pk, sk)$.
-- $E(pk, m):$ **randomized** alg. that takes $m \in \mathcal{M}$ and outputs $c \in \mathcal{C}$.
-- $D(sk, c):$ det. alg. that $c \in \mathcal{C}$ and outputs $m \in \mathcal{M}$ or $\perp$.
-- $\forall m \in \mathcal{M}, D(sk, E(pk, m)) = m$.
-
-</v-click>
-
-
-<v-click>
-
-QUESTION: Is public key encryption able to solve MitM problem?
+2. 尾数相加。考虑$S_x, S_y$的符号情况。若同号，则计算 $M=M_x+M_y$。若异号，则用大者减小者得到差的绝对值$M=|M_x-M_y|$，并附上正确的符号$S$。
 
 </v-click>
 
 <v-click>
 
-QUESTION: What level of security does public key encryption at least satisfiy?
+3. 规范化。显然 $\max\{M_x+M_y, |M_x-M_y|\}<4$，故$M$右移最多只需一次（对应指数$E$加1即可）。若 $M=0$，则直接跳到第四步。其余情况反复左移并自减$E$，直到$M \in [1, 2)$ 时停止。
 
-- semantic security
-- CPA security
-- CCA security
-- ind. CPA security
+</v-click>
+
+<v-click>
+
+4. 写入结果。最后将 $M$ 的首位 1 剔除，将最后的 $S, E, M$ 重新作为新的 32 位浮点结果。
+
+</v-click>
+
+<v-click>
+
+5. 在 $M_y \leftarrow \frac{1.M_y}{2^{E_x-E_y}}$、$M=M_x+M_y$、$M=|M_x-M_y|$以及对$M$右移一位这四个步骤中，会涉及到舍入问题。
 
 </v-click>
 
 ---
 
-## CCA Security for Public Key Encryption
+### IEEE 754 乘法
 
-<img src="https://img.junyu33.me/slidev/imgs/image-19.png">
-
-DEF: E is CCA secure if for all "eff" A: $Adv_{CCA}[A,E]=|Pr[\text{EXP}(0)=1]-[Pr[\text{EXP}(1)=1]| \le \text{negl}$
-
----
-
-## Trapdoor Function (TDF)
-
-Next we consider specific implementations of public key encryption, one of them is using trapdoor function:
-
-DEF: a trapdoor function $X\rightarrow Y$ is a triple of "eff" algs $(G, F, F^{-1})$:
-
-- $G():$ randomized alg. outputs a key pair $(pk, sk)$.
-- $F(pk, \cdot):$ **det.** alg. that defines a function $X\rightarrow Y$.
-- $D(sk, \cdot):$ defines a function $Y\rightarrow X$ that inverts $F(pk, \cdot)$.
-- $\forall x \in X, F^{-1}(sk, F(pk, x)) = x$.
+乘法由于不涉及数的大小比较，因此步骤相对比较简单。
 
 <v-click>
 
-QUESTION: 
+1. 符号位异或。$S = S_x \oplus S_y$.
 
-- Can you find the major difference from public key encryption? 
-- Can we use TDF directly to build public key encryption?
+</v-click>
+
+<v-click>
+
+2. 指数相加。$E = E_x + E_y - bias$.
+
+</v-click>
+
+<v-click>
+
+3. 尾数相乘。$M=(1.M_x) \cdot (1.M_y)$，结果在 $[1, 4)$ 范围内。
+
+</v-click>
+
+<v-click>
+
+4. 规范化。如果结果 $\ge 2$，将 $E$ 自增并将 $M$ 右移一位，最后剔除 $M$ 最高位的 1.
+
+</v-click>
+
+<v-click>
+
+5. 在 $M=(1.M_x) \cdot (1.M_y)$ 与 $M$ 右移一位这两步涉及到舍入操作。
+
+</v-click>
+
+<v-click>
+
+### 舍入方法
+
+我们令 $G,R,S$ 分别为 $M$ 最低位之后的后三位。则“四舍六入五成双”的规则可以形式化表述为如下伪代码：
+
+```python
+if (GRS > 0b100):
+    M = M + 1
+elif (GRS == 0b100 and M[:-1] == 1):
+    M = M + 1
+```
+
+注意舍入之后有可能需要再次规范化。
 
 </v-click>
 
 ---
 
-## RSA Trapdoor Permutation
+## Building Blocks
 
-- $G():$ 
-    - choose random primes $p,q$ 1024 bits. Set $N = pq$.
-    - choose integers $e,d \text{ s.t } ed = 1 \pmod {\varphi(N)}$.
-    - output $pk = (N,E), sk = (N,d)$.
-- $F(pk, x):$ $y=x^e$
-- $D(sk, y):$ $y^d = x^{ed} = x^{ed \mod{\varphi(N)}} = x^1 = x$.
+下面用自底向上的方式，讲清楚整个协议是如何构建的。
+
+### $\mathcal{F}_{MUX}$
+
+我们需要实现的理想功能是，`MUX(b,x)=(b==1?x:0)`。即对于布尔 secret share $[c]=(c_0, c_1), c_i \in \{0,1\}$ 和算术 secret share $[a]=(a_0,a_1), a \in Z_n$，输出 $[a \cdot c]$。步骤如下：
 
 <v-click>
 
-The security statement is: for all efficient algs. $A$:
-
-$$ Pr[A(N,e,y)=y^{1/e}] < \text{negl}(N) $$
-
-which is supported by the difficulty of factoring big integers.
+SETUP: $P_0$ 持有 $a_0,c_0$，$P_1$ 持有 $a_1,c_1$。
 
 </v-click>
 
 <v-click>
 
-By using RSA as a TDF and adding some randomness, we can construct RSA public key encryption easily.
-
-</v-click>
-
----
-
-## RSA Public Key Encryption
-
-$(E_s, D_s)$ symmetric enc. scheme provide AE, $H: Z_N \rightarrow K$ where K is keyspace of $(E, D)$.
-
-- $G():$ 
-    - choose random primes $p,q$ 1024 bits. Set $N = pq$.
-    - choose integers $e,d \text{ s.t } ed = 1 \pmod {\varphi(N)}$.
-    - output $pk = (N,E), sk = (N,d)$.
-- $F(pk, x):$ 
-    - choose random $x$ in $Z_N$
-    - $y=x^e$, $k \leftarrow H(x)$.
-    - output $y, E_s(k, m)$.
-- $D(sk, (y, c)):$ 
-    - output $D_s(H(RSA^{-1}(y)), c)$.
-
----
-
-## Wiener's Attack
-
-However, as a TDF, RSA itself isn't secure enough, Wiener proves that if $d \le N^{0.25}/3$ then RSA is insecure.
-
-<v-click>
-
-Proof:
-
-$$ ed = 1 \pmod{\varphi(N)} \Rightarrow \exists k \in \mathbb{Z}, ed = k\cdot\varphi(N)+1$$
-
-$$ |\frac{e}{\varphi(N)} - \frac{k}{d}| = \frac{1}{d\cdot\varphi(N)} \le \frac{1}{\sqrt{N}}$$
-
-since $\varphi(N)=N-p-q+1$, $|N-\varphi(N)| \le p + q \le 3 \sqrt{N}$
-
-$$ d \le N^{0.25}/3 \Rightarrow |\frac{e}{N} - \frac{k}{d}| \le |\frac{e}{N} - \frac{e}{\varphi(N)}| + |\frac{e}{\varphi(N)} - \frac{k}{d}| = |\frac{e(\varphi(N)-N)}{N\cdot \varphi(N)}| + |\frac{e}{\varphi(N)} - \frac{k}{d}|$$
-
-$$ \le \frac{3\sqrt{N}}{N} + \frac{\sqrt{N}}{N}=\frac{4}{\sqrt{N}} < \frac{1}{2d^2}$$
+- $P_0$ 与 $P_1$ 各自生成随机数 $r_0, r_1 \in Z_n$。
 
 </v-click>
 
 <v-click>
 
-As you can see, $|\frac{e}{N} - \frac{k}{d}|$ is very small, so continued fraction of $\frac{e}{N}$ gives $\frac{k}{d}$. Q.E.D.
+- $P_0$ 根据 $c_0$ 的值设置 $(s_0, s_1)$。若 $c_0=0$，令 $(s_0,s_1)=(-r_0,-r_0+a_0)$，否则为 $(-r_0+a_0,-r_0)$。
+
+</v-click>
+
+<v-click>
+
+- $P_0$ 作为发送方与 $P_1$ 做一轮 1-out-of-2 OT，$P_0$ 提供两条消息 $(s_0, s_1)$，$P_1$ 提供 $c_1$ 并最终获得 $x_1=s_{c_1}$。
+
+</v-click>
+
+<v-click>
+
+- $P_1$ 根据 $c_1$ 的值设置 $(t_0, t_1)$。若 $c_1=0$，令 $(t_0,t_1)=(-r_1,-r_1+a_1)$，否则为 $(-r_1+a_1,-r_1)$。
+
+</v-click>
+
+<v-click>
+
+- 再做一轮 OT，$P_0$ 获得 $x_0=t_{c_0}$。
+
+</v-click>
+
+<v-click>
+
+- $P_0$ 贡献 $r_0+x_0$，$P_1$ 贡献 $r_1+x_1$。加起来是 $(r_0+r_1)+(x_0+x_1)$。
 
 </v-click>
 
 ---
 
-Suppose $N=90581, e=17993$, we can try to write the continued fraction of $\frac{e}{N}$.
+我们列举出四种可能的 $(c_0, c_1)$ 情况：
+
+> $(s_0,s_1)=(-r_0+c_0a_0,-r_0+a_0(1-c_0))$，$(t_0,t_1)=(-r_1+c_1a_1,-r_1+a_1(1-c_1))$
+>
+> $x_0=t_{c_0}, x_1=s_{c_1}$
 
 <v-click>
 
-- $17993 = 0 \times 90581 + 17993$, then $q_0 = 0$.
-- $90581 = 5 \times 17993 + 616$, then $q_1 = 5$.
-- $17993 = 29 \times 616 + 128$, then $q_2 = 29$.
-- $616 = 4 \times 128 + 104$, then $q_3 = 4$.
+|  $c_0$ |  $c_1$  |  $x_0$  |  $x_1$  |  $(r_0+r_1)+(x_0+x_1)$  |
+|:----:|:----:|:----:|:----:|:----:|
+|  0 |  0 |  $-r_1+c_1a_1$ |  $-r_0+c_0a_0$ |  0 |
+|  0 |  1 |  $-r_1+c_1a_1$ |  $-r_0+a_0(1-c_0)$ |  $a$ |
+|  1 |  0 |  $-r_1+a_1(1-c_1)$ |  $-r_0+c_0a_0$ |  $a$ |
+|  1 |  1 |  $-r_1+a_1(1-c_1)$ |  $-r_0+a_0(1-c_0)$ |  0 |
+
+结果刚好等于 $[a\cdot c]$，因此协议正确。
 
 </v-click>
 
 <v-click>
 
-Then we have $e/N$ = $[0, 5, 29, 4, 1, 3, 2, 4, 3]$.
-
-</v-click>
-
-<v-click>
-
-We can have convergents like:
-
-$0$, $\frac{1}{5}$, $\frac{1}{5+\frac{1}{29}}=\frac{29}{146}$,$\frac{1}{5+\frac{1}{29+\frac{1}{4}}}=\frac{117}{589},\frac{146}{735},\frac{555}{2794},\frac{1256}{6323},\frac{5579}{28086},\frac{17993}{90581}$.
-
-And we can try $\varphi(N)=\frac{ed-1}{k}$: $k=1,d=5$ satisfies, we got $\varphi(N)=89964$, other pairs can't be an integer.
-
-</v-click>
-
-<v-click>
-
-Solve $x^2-((N-\varphi(N))+1)x + N = 0$, we got $(239, 379)$, and we've found factorization of $N$, which breaks the whole RSA system.
+通信量为两轮 OT 的开销，也就是 $2(\lambda+2l)=2\lambda+4l$。但 CryptoFlow2 的 3.1.1 节可以将通信开销优化到 $2\lambda+2l$。
 
 </v-click>
 
 ---
 
-## ElGamal Public Key system
+### $\mathcal{F}_{AND}$
 
-Since RSA has some defects, ElGamal, which is based on Diffie-Hellman Key Exchange, came out of place.
+这是显然的，直接使用 beaver triple 实现，通信量为 $(\lambda+16)+4$。（见 CryptoFlow2 的附录 A1 节）
 
 <v-click>
 
-First, let's recap DHKE:
+### $\mathcal{F}_{OR}$
 
-> - SETUP(): a large prime $p$ (e.g. 600 digits), an integers $g$ (usually primitive root).
-> - Alice: choose random $a$ in $[1, p-1]$, send $A = g^a$ to Bob.
-> - Bob: choose random $b$ in $[1, p-1]$, send $B= g^b$ to Alice.
-> - Alice calculate $k_{AB} = B^a$, Bob calculate $k_{AB} = A^b$, then they can communicate using $k_{AB}$.
-
-QUESTION: what will happen if we treat $A$ as $pk$?
+我们有 $[x \lor y]=[x \oplus y] \oplus [x \land y]$。因此令 $[x \land y]=(z_0,z_1)$，因此每一方直接计算 $x_i \oplus y_i \oplus z_i$ 即可。通信量与 $\mathcal{F}_{AND}$ 相同，也为 $\lambda+20$。
 
 </v-click>
 
 <v-click>
 
-Therefore, a basic ElGamal protocol is invented.
+### $\mathcal{F}_{EQ}$
 
-- SETUP(): a large prime $p$ (e.g. 600 digits), an integers $g$ (usually primitive root).
-- Alice: choose random $a$ in $[1, p-1]$, send $A = g^a$ to Bob.
-- Bob: choose random $b$ in $[1, p-1]$, encrypt $m$ using $k_{AB} = A^b$, send $(B=g^b, E_s(k_{AB}, m))$ to Alice.
-- Alice calculate $k_{AB} = B^a$, decrypt $m = D_s(k_{AB}, c)$.
+我们将 $x,y$ 按照 $m$-bit 进行分块。考虑对某个块 $x_j, y_j$ 进行比较。我们使用 1-out-of-$2^m$ OT：
 
-</v-click>
+- $P_0$ 随机选取 $(eq_{0,j})_0$，并对 $k \in [0, 2^m-1]$ 准备消息 $t_{j,k}=(eq_{0,j})_0 \oplus (x_j == k)$.
+- $P_0$ 将 $2^m$ 个消息作为 OT 的输入，$P_1$ 输入 $y_j$，并获得 $(eq_{0,j})_1$.
+- 当且仅当 $x_j=y_j$ 时，我们有 $(eq_{0,j})_0 \oplus (eq_{0,j})_1=1$，这就完成了 $x_j, y_j$ 的秘密EQ判断。
 
----
-
-And here is a more modern version:
-
-- $G:$ finite cyclic group of order $n$, random generator $g \in G$.
-- $\text{sk} = a \overset{R}{\leftarrow}Z_n$, $\text{pk} = (g, h=g^a)$. 
-- $(E_s, D_s):$ symmetric AE defined over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$.
-- $H: G^2 \rightarrow K$ a hash function.
-
-<v-click>
-
-$E(\text{pk}=(g,h), m):$
-
-- $b \overset{R}{\leftarrow} Z_n, u \leftarrow g^b, v \leftarrow h^b$.
-- $k \leftarrow H(u,v), c \leftarrow E_s(k,m)$.
-- $\text{output }(u,c)$.
-
-</v-click>
-
-<v-click>
-
-$D(\text{sk}=a,(u,c)):$
-
-- $v = u^a$.
-- $k = H(u,v), m \leftarrow D_s(k,c)$.
-- $\text{output } m$.
+我们可以通过树状结构与 $\mathcal{F}_{AND}$，计算 $(eq_{1,j})_i = (eq_{0,j})_i \land (eq_{0,j+m})_i$，将 $m$-bit 比较拓展到 $2m$-bit，最后完成整个长度的比较。通信量为 $\lceil \frac{l}{m} \rceil (2\lambda+2^m)+\lceil \frac{l}{m} \rceil(\lambda+20)$，轮数为 $\log l$.
 
 </v-click>
 
 ---
 
-## ElGamal CCA Security
+### $\mathcal{F}_{GT/LT}$
 
-In previous sections, we know basic ElGamal protocol relies on Dlog problem, just as same as Diffie-Hellman key exchange. Since DHKE only provides eavesdropping security, the question is:
-
-QUESTION: Does modern version of ElGamal provide CCA security?
-
-To solve this question, let's look at several security assumptions:
-
-- Computational DH (CDH): for all "eff" algs. $A$, $Pr[A(g, g^a, g^b)=g^{ab}] < \text{negl}$.
-- Hash DH (HDH): $H: G^2 \rightarrow K$ as a hash function, $(g, g^a, g^b, H(g^b, g^{ab})) \approx_p (g, g^a, g^b, R)$.
-- Interactive DH (IDH): for all "eff" $A$, $Pr[A \text{ outputs } g^{ab}] < \text{negl}$.
-
-<img src="https://img.junyu33.me/slidev/imgs/image-21.png">
-
----
-
-In fact, if:
-
-- IDH holds in the group $G$;
-- $(E_s, D_s)$ provides AE;
-- $H: G^2 \rightarrow K$ is a "random oracle".
-
-then ElGamal is $CCA^{ro}$ secure.
+仍然是分块的思路，首先计算块长度为 $m$ 的结果 $1\{x_j < y_j\}$，还是可以使用 1-out-of-$2^m$ OT 完成。$P_0$ 只需随机生成 $(lt_{0,j})_0$, 并准备 $2^m$ 个消息 $t_{j,k}=(lt_{0,j})_0 \oplus 1\{x_j < k\}$.
 
 <v-click>
 
-QUESTION:
+然后合并的时候高位优先，$1\{x<y\}=1\{x_H<y_H\} \oplus (1\{x_H=y_H\} \land 1\{x_L<y_L\})$.
 
-- Can we prove CCA security based on CDH?
-- Can we prove CCA security without random oracles?
-
-</v-click>
-
----
-
-## ElGamal Variants
-
-Twin ElGamal:
-
-- SETUP(): $g \in G \text{ and } a_1, a_2 \in Z_n$, output $\text{pk} = (g, h_1=g^{a_1}, h_2=g^{a_2})$, $\text{sk}=(a_1, a_2)$.
-- $E(\text{pk}=(g,h_1,h_2),m)): b\leftarrow Z_n$
-    - $k \leftarrow H(g^b, h_1^b, h_2^b)$.
-    - $c \leftarrow E_s(k, m)$.
-    - $\text{output } (g^b, c)$.
-- $D(\text{sk}=(a_1,a_2),(u,c)):$
-    - $k \leftarrow H(u, u^{a_1}, u^{a_2})$.
-    - $m \leftarrow D_s(k, c)$.
-    - $\text{output } m$.
-
-<v-click>
-
-You can observe this algorithm "has a beauty of symmetry".
+通信成本小于 $\lambda(4q) + 2^m(2q) + 22q$，取 $m=4, q=l/4$ 时为 $\lambda l+13.5l$ ，轮数 $\log l$.
 
 </v-click>
 
 <v-click>
 
-Another popular variant is ElGamal on ECC (ECELG), you will learn/have already learnt in your textbook.
+### $\mathcal{F}_{LUT}$
+
+假设 LUT 有 $2^m$ 项，每一项有 $n$-bit.
+
+SETUP: $P_0$ 随机取索引 $r \in \{0,1\}^m$，和 LUT $L$ 混淆后的 share $T^0[i] \in Z_{2^n}, \quad \forall i \in \{0,1\}^m$.
+
+</v-click>
+
+<v-click>
+
+- $P_0$ 对每个 $s \in \{0,1\}^m$，构造 $M_s[i] = L[i \oplus r \oplus s] \oplus T^0[i], \quad \forall i \in \{0,1\}^m$.
+
+</v-click>
+
+<v-click>
+
+- $P_0$ 将这 $2^m$ 条长度为 $n$-bit 的消息与 $P_1$（选取 $s$）作 1-out-of-$2^m$ $\text{OT}_n$，成本为 $2\lambda+2^mn$. 
+
+</v-click>
+
+<v-click>
+
+- $P_1$ 令 $T^1 \leftarrow M_s$。现在 $P_0$ 持有 $(T^0, r)$，$P_1$ 持有 $(T^1, s)$.
+
+</v-click>
+
+<v-click>
+
+- 在线阶段，$P_0$ 发送 $u = x_0 \oplus r$, $P_1$ 发送 $v = x_1 \oplus s$，双方同时计算 $i^*=u \oplus v=x \oplus r \oplus s$. 最后 $P_0, P_1$ 分别保存 $T^0[i^*], T^1[i^*]$，显然合起来是 $L[x]$。通信成本 $2m$ 可忽略。
 
 </v-click>
 
 ---
 
-## Public Key Encryption Summary
+### $\mathcal{F}_{Wrap}$
 
-<img src="https://img.junyu33.me/slidev/imgs/Unsaved%20Image%202.jpg">
+如果我们要计算 $1\{a+b>2^n-1\}$，这等同于计算 $1\{2^n-1-a<b\}$。因此直接使用 $\mathcal{F}_{GT/LT}$ 即可。
+
+<v-click>
+
+### $\mathcal{F}_{B2A}$
+
+$P_0, P_1$ 分别持有布尔共享的一位 $c = c_0 \oplus c_1, c \in \{0,1\}$，并最后得到 $d=d_0+d_1 \pmod{2^n}$ 且 $d=c$。 
+
+</v-click>
+
+<v-click>
+
+- $P_0$ 随机选取 $x \in Z_{2^n}$，生成二元组 $(x, c_0+x)$， 并与 $P_1$ （持有输入 $c_1$）执行 1-out-of-2 $\text{COT}_n$，$P_1$ 拿到结果 $y_1$。$P_0$ 设置 $y_0=2^n-x$.
+
+</v-click>
+
+<v-click>
+
+- 双方本地线性修正，$P_0$ 计算 $d_0=c_0-2y_0$，$P_1$ 计算 $d_1=c_1-2y_1$.
+
+</v-click>
+
+<v-click>
+
+验证一下结果，$d_0+d_1=c_0+c_1-2(y_0+y_1)$。
+
+- 当 $c_1=0$ 时，$y_0+y_1=(2^n-x)+x=2^n$，故 $d_0+d_1=c_0+c_1 \pmod{2^n}$。
+- 当 $c_1=1$ 时，$y_0+y_1=(2^n-x)+(c_0+x)=2^n+c_0$，故 $d_0+d_1=c_0+c_1-2c_0=1-c_0$. 但此时 $c=c_0 \oplus 1 = 1 - c_0$，因此 $d=c$ 仍然成立。
+
+通信开销为一次 1-out-of-2 $\text{COT}_n$，成本为 $\lambda+n$.
+
+</v-click>
 
 ---
-layout: end
----
 
-THANKS FOR YOUR LISTENING!
+### $\mathcal{F}_{ZExt}$
+
+我们有了前面的 $\mathcal{F}_{Wrap}$ 和 $\mathcal{F}_{B2A}$，构造 $\mathcal{F}_{ZExt}$ 便是自然的事情。对于 $m$-bit 的加法共享，我们尝试将其零扩展到 $n$-bit $(n>m)$。首先，我们要 check 这两个 share 是否有进位（使用 $\mathcal{F}_{Wrap}$）,然后将得到的布尔进位 $w$ 使用 $\mathcal{F}_{B2A}$ 转为 $Z_{2^{n-m}}$ 的算术值。
+
+<v-click>
+
+但我们只是做零扩展操作，两个 share 相加，不能在第 $m$ 位产生进位，因此双方要在 $Z_{2^n}$ 减掉一个 $2^m$ 的 share，使用 $2^m *_n w$ 即可。(可以用加法的补码替代减法操作，而 $*_n$ 运算也可以使用 $\mathcal{F}_{MUX}$ 替代。)
+
+成本为 $\text{Comm}(\mathcal{F}_{Wrap}+\mathcal{F}_{ZExt})=\lambda m+14m+\lambda+(n-m)=\lambda(m+1)+13m+n$.
+
+</v-click>
+
+<v-click>
+
+### $\mathcal{F}_{TR}$
+
+既然我们有了从小到大的 $\mathcal{F}_{ZExt}$，那自然也有反过来的 $\mathcal{F}_{TR}$.
+
+</v-click>
