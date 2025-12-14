@@ -320,7 +320,7 @@ $P_0, P_1$ 分别持有布尔共享的一位 $c = c_0 \oplus c_1, c \in \{0,1\}$
 
 <v-click>
 
-但我们只是做零扩展操作，两个 share 相加，不能在第 $m$ 位产生进位，因此双方要在 $Z_{2^n}$ 减掉一个 $2^m$ 的 share，使用 $2^m *_n w$ 即可。(可以用加法的补码替代减法操作，而 $*_n$ 运算也可以使用 $\mathcal{F}_{MUX}$ 替代。)
+但我们只是做零扩展操作，两个 share 相加，不能在第 $m$ 位产生进位，因此双方要在 $Z_{2^n}$ 减掉一个 $2^m$ 的 share，使用 $2^m *_n w$ 即可。($*_n$ 运算也可以使用 $\mathcal{F}_{MUX}$ 替代。)
 
 成本为 $\text{Comm}(\mathcal{F}_{Wrap}+\mathcal{F}_{ZExt})=\lambda m+14m+\lambda+(n-m)=\lambda(m+1)+13m+n$.
 
@@ -423,5 +423,59 @@ $=(x+w_x2^m)(y+w_y2^n)-w_y\cdot(x\cdot 2^n)-w_x\cdot(y\cdot 2^m)=xy$，刚好抵
 设$\nu=\max(m,n),l=m+n$，论文给出了具体的开销，数量级为 $O(\lambda \nu + \nu^2)$。相比于 beaver triple 做法（含生成乘法三元组）的 $O(\lambda l+l^2)$ 数量级相同，但论文声称 $\mathcal{F}_{UMult}$ 通信少 $1.5 \times$. 
 
 $\mathcal{F}_{SMult}$ 与 $\mathcal{F}_{UMult}$ 原理类似，通信量完全相同，这里就略过了。
+
+</v-click>
+
+---
+
+### $\mathcal{F}_{DigDec}$
+
+作用是将一个 $l$-bit 的 share $⟨x⟩$，按 $d$-bit 分块，拆分成 $c = \lceil \frac{l}{d} \rceil$ 个 $\{⟨z_i⟩\}_{i=0}^{c-1}$，其中 $x=z_{c-1}||z_{c-2}|| \cdots || z_0$. 显然，本地进行这个操作会导致 wrap 问题。
+
+<v-click>
+
+当然解决这个问题的思路也容易想到，首先使用 $\mathcal{F}_{wrap}$ 判断 $⟨x_{[0,d-1]}⟩$ 的两个 share 是否溢出，并得到溢出结果的 share $⟨c_0⟩$，令 $⟨z_0⟩=⟨x_{[0,d-1]}⟩-2^d⟨c_0⟩$，并将目前双方的高位 $⟨x_{[d,l-1]}⟩$ 加上 $⟨c_0⟩$，最后递归执行这一过程即可。
+
+</v-click>
+
+<v-click>
+
+复杂度相当于 $(c-1)$ 次 $\mathcal{F}_{wrap}$ 的成本，也就是 $(c-1)(\lambda d + 14d)$.
+
+</v-click>
+
+<v-click>
+
+### $\mathcal{F}_{MSNZB-P}$
+
+检测第 $i$ 个 $d$-bit 分块中最高非零位对应的全局 index，也可以理解成 $\lfloor \log_2(z_i) \rfloor + i \cdot d$，这里的具体实现方法是直接 $\mathcal{F}_{LUT}$ 解决。但有一个问题是当 $z_i=0$ 时右边这个式子与左边实现的语义并不相同，作者这里选择让 $z_i=0$ 的结果未定义，交给上层协议来解决。
+
+> 这一点我不是很理解，$z_i=0$ 的情况也可以在 $\mathcal{F}_{LUT}$ 的情况直接解决啊，又不会增加通信成本。
+
+总之，通信量等价于一个 1-out-of-$2^d$ $\text{OT}_{\lceil \log_2 l \rceil}$ 实现，因此通信量为 $2\lambda + 2^d \lceil \log_2 l \rceil$.
+
+</v-click>
+
+<!-- 检测第 $i$ 个 $d$-bit 分块中最高非零位对应的全局 index，也可以理解成 $\lfloor \log_2(z_i) \rfloor + i \cdot d$，这里的具体实现方法是直接 $\mathcal{F}_{LUT}$ 解决。但有一个问题是当 $z_i=0$ 时右边这个式子与左边实现的语义并不相同，作者这里选择让 $z_i=0$ 的结果未定义，交给上层协议来解决。（这一点我不是很理解，$z_i=0$ 的情况也可以在 $\mathcal{F}_{LUT}$ 的情况直接解决啊，又不会增加通信成本。）
+
+总之，通信量等价于一个 1-out-of-$2^d$ $\text{OT}_{\lceil \log_2 l \rceil}$ 实现，因此通信量为 $2\lambda + 2^d \lceil \log_2 l \rceil$. $\mathcal{F}_{OneHot}$ 的做法类似，复杂度为 $2\lambda + l^2$（虽然单次成本较高，但由于只在 $\mathcal{F}_{MSNZB}$ 最后调用一次，因此总成本还能接受）。 -->
+
+---
+
+### $\mathcal{F}_{Zeros}, \mathcal{F}_{OneHot}$
+
+这两个分别可以用 1-out-of-$2^d$ $\text{OT}$ 和 1-out-of-$l$ $\text{OT}_l$ 实现，成本分别为 $2\lambda + 2^d$ 和 $2\lambda + l^2$。虽然后者成本较高，但只在父协议 $\mathcal{F}_{MSNZB}$ 的最后调用一次，因此总成本还能接受。
+
+<v-click>
+
+### $\mathcal{F}_{MSNZB}$
+
+为了简单起见，这里我假设 $\mathcal{F}_{MSNZB-P}$ 是定义良好的（也就是处理了 $z_i=0$ 的情况）。
+
+</v-click>
+
+<v-click>
+
+- 首先计算输入 $⟨x⟩^l$ 做 $\mathcal{F}_{DigDec}$ 得到 $⟨y_i⟩^d$，然后对每个 $i$ 调用 $\mathcal{F}_{MSNZB-P}$ 得到 $⟨u_i⟩^{\lceil \log_2 l \rceil}$.
 
 </v-click>
