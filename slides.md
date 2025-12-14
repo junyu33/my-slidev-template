@@ -464,18 +464,38 @@ $\mathcal{F}_{SMult}$ 与 $\mathcal{F}_{UMult}$ 原理类似，通信量完全�
 
 ### $\mathcal{F}_{Zeros}, \mathcal{F}_{OneHot}$
 
+前者的意思是判断一个长度为 $d$ 的向量（或者 $d$-bit 数）是否为零。而后者是将一个 $\langle k \rangle\in [0, l-1]$ 的 share，转化为一个长度为 $l$ 的向量 share，满足和为 $(0,0, \cdots, 1, \cdots, 0)$，其中仅有第 $k$ 个向量为 1.
+
 这两个分别可以用 1-out-of-$2^d$ $\text{OT}$ 和 1-out-of-$l$ $\text{OT}_l$ 实现，成本分别为 $2\lambda + 2^d$ 和 $2\lambda + l^2$。虽然后者成本较高，但只在父协议 $\mathcal{F}_{MSNZB}$ 的最后调用一次，因此总成本还能接受。
 
 <v-click>
 
 ### $\mathcal{F}_{MSNZB}$
 
-为了简单起见，这里我假设 $\mathcal{F}_{MSNZB-P}$ 是定义良好的（也就是处理了 $z_i=0$ 的情况）。
+含义是给定一个输入 $⟨x⟩^l$，计算出 $l$ 的最高零位的值 $k$，输出向量 share 满足和为 $(0,0, \cdots, 1, \cdots, 0)$，其中仅有第 $k$ 个向量为 1。 为了简单起见，这里我假设 $\mathcal{F}_{MSNZB-P}$ 是定义良好的（也就是处理了 $z_i=0$ 的情况）。令 $\iota=\lceil \log_2 l \rceil$:
 
 </v-click>
 
 <v-click>
 
-- 首先计算输入 $⟨x⟩^l$ 做 $\mathcal{F}_{DigDec}$ 得到 $⟨y_i⟩^d$，然后对每个 $i$ 调用 $\mathcal{F}_{MSNZB-P}$ 得到 $⟨u_i⟩^{\lceil \log_2 l \rceil}$.
+- 首先计算输入 $⟨x⟩^l$ 做 $\mathcal{F}_{DigDec}$ 得到 $⟨y_i⟩^d$，然后对每个 $i$ 调用 $\mathcal{F}_{MSNZB-P}$ 得到 $⟨u_i⟩^\iota$.
+
+</v-click>
+
+<v-click>
+
+- 调用 $\mathcal{F}_{Zeros}$ 得到布尔分享 $⟨v_i⟩$，用 $\mathcal{F}_{AND}$（也就是 beaver triple）对于任意 $i = c-2, \cdots, 0$ 做 $w_i = w_{i+1} \land v_{i+1}$. 这样 $w_i = \prod_{j>i} v_j$. 这样最高非零位的值便是满足 $w_i=1$ 的从大到小的最后一个。 
+
+</v-click>
+
+<v-click>
+
+- 对最高位 digit，令 $⟨z_{c-1}^{\prime}⟩^\iota=\langle u_{c-1} \rangle^\iota$，对于剩下 $i=c-2, \cdots, 0$，$z_i^{\prime}=\text{MUX}(w_i, u_i)$.
+
+</v-click>
+
+<v-click>
+
+- 最后本地算出 $\tilde{z}=\sum_{i=0}^{c-1} z_i^{\prime}$，并调用 $\mathcal{F}_{OneHot}$ 得到最终的布尔向量 $\{\langle z_k \rangle \}_{k \in [0,l-1]}$。
 
 </v-click>
