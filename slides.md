@@ -499,3 +499,30 @@ $\mathcal{F}_{SMult}$ 与 $\mathcal{F}_{UMult}$ 原理类似，通信量完全�
 - 最后本地算出 $\tilde{z}=\sum_{i=0}^{c-1} z_i^{\prime}$，并调用 $\mathcal{F}_{OneHot}$ 得到最终的布尔向量 $\{\langle z_k \rangle \}_{k \in [0,l-1]}$。
 
 </v-click>
+
+---
+zoom: 0.9
+---
+
+### 总结
+
+| 原语 | 依赖的原语 | 功能 | 通信开销 |
+|---|---|---|---|
+| $\mathcal{F}_{MUX}$ | $\binom{2}{1}-\text{OT}_l$ | 长度$l$位的三目运算符 | $2\lambda + 2l$ |
+| $\mathcal{F}_{OR}$ | $\mathcal{F}_{AND}, \text{ i.e. beaver triple}$ | 逻辑或 | $\lambda + 20$ |
+| $\mathcal{F}_{EQ}$ | $\binom{2^m}{1}-\text{OT}, \mathcal{F}_{AND}$ | 长度$l$位的算术相等 | $< \frac{3}{4} \lambda l+9l$ |
+| $\mathcal{F}_{LT/GT}$ | $\binom{2^m}{1}-\text{OT}, \mathcal{F}_{AND}$ | 长度$l$位的算术比较 | $< \lambda l+14l$ |
+| $\mathcal{F}_{LUT}$ | $\binom{2^m}{1}-\text{OT}_n$ | 长度$m$位，结果 $n$ 位的查找表 | $2\lambda + 2^mn$ |
+| $\mathcal{F}_{ZExt}$ | $\mathcal{F}_{Wrap}, \mathcal{F}_{B2A}$ | $m$ 位零扩展到 $n$ 位 | $\lambda(m+1)+13m+n$ |
+| $\mathcal{F}_{TR}$ | $\mathcal{F}_{Wrap}, \mathcal{F}_{B2A}$ | $l$ 位截取高 $l-s$ 位 | $\lambda(s+1)+l+13s$ |
+| $\mathcal{F}_{UMult}, \mathcal{F}_{SMult}$ | $\mathcal{F}_{CrossTerm}, \mathcal{F}_{Wrap}, \mathcal{F}_{MUX}$ | 长度$m,n$位的无/有符号乘 | $O(\lambda l+l^2)$ |
+| $\mathcal{F}_{MSNZB}$ | $\mathcal{F}_{DigDec},\mathcal{F}_{MSNZB-P},\mathcal{F}_{OneHot} 等$ | 长度$l$位的最高非零位index | $\le \lambda (5l-4)+l^2$ |
+
+
+---
+
+## Primitives
+
+我们终于构建了 secfloat 论文对应的所有基础协议，现在我们转入本篇论文构造的重要原语。
+
+### $\mathcal{F}_{FPcheck}$
