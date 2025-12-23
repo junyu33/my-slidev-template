@@ -107,14 +107,11 @@ $$x=(-1)^{S_x} \cdot (1.M_x) \cdot 2^{E_x},\quad y=(-1)^{S_y} \cdot (1.M_y) \cdo
 
 ### 舍入方法
 
-我们令 $G,R,S$ 分别为 $M$ 最低位之后的后三位。则“四舍六入五成双”的规则可以形式化表述为如下伪代码：
+我们令 $d,g,f$ 分别为 $M$ 的最低位（decision bit），被丢弃的最高位（guard bit）和被丢弃的剩余位（sticky bit）。则“四舍六入五成双”的规则可以形式化表述为如下公式：
 
-```python
-if (GRS > 0b100):
-    M = M + 1
-elif (GRS == 0b100 and M[:-1] == 1):
-    M = M + 1
-```
+$$ c = g \land (d \lor f) $$
+
+简单的解释一下，就是只有当 $g=1$ 时才可能进位。此时如果 $f=1$（肯定大于0.5）或者 $d=1$（刚好$0.5$但要是偶数），则进位（$c=1$）。
 
 注意舍入之后有可能需要再次规范化。
 
@@ -320,9 +317,9 @@ $P_0, P_1$ 分别持有布尔共享的一位 $c = c_0 \oplus c_1, c \in \{0,1\}$
 
 <v-click>
 
-但我们只是做零扩展操作，两个 share 相加，不能在第 $m$ 位产生进位，因此双方要在 $Z_{2^n}$ 减掉一个 $2^m$ 的 share，使用 $2^m *_n w$ 即可。($*_n$ 运算也可以使用 $\mathcal{F}_{MUX}$ 替代。)
+但我们只是做零扩展操作，两个 share 相加，不能在第 $m$ 位产生进位，因此双方要在 $Z_{2^n}$ 减掉一个 $2^m$ 的 share，由于 $m$ 公开，可以直接本地完成。
 
-成本为 $\text{Comm}(\mathcal{F}_{Wrap}+\mathcal{F}_{ZExt})=\lambda m+14m+\lambda+(n-m)=\lambda(m+1)+13m+n$.
+成本为 $\text{Comm}(\mathcal{F}_{Wrap}+\mathcal{F}_{B2A})=\lambda m+14m+\lambda+(n-m)=\lambda(m+1)+13m+n$.
 
 </v-click>
 
@@ -330,7 +327,7 @@ $P_0, P_1$ 分别持有布尔共享的一位 $c = c_0 \oplus c_1, c \in \{0,1\}$
 
 ### $\mathcal{F}_{TR}$
 
-既然我们有了从小到大的 $\mathcal{F}_{ZExt}$，那自然也有反过来的 $\mathcal{F}_{TR}$。我们假设从 $l$-bit 截断低位的 $s$-bit，并输出最终的高位 $l-s$-bit：
+既然我们有了从小到大的 $\mathcal{F}_{ZExt}$，那自然也有反过来的 $\mathcal{F}_{TR}$。我们假设从 $l$-bit 截断低位的 $s$-bit，并输出最终的高位 $l-s$-bit（这本质上也等同于 `x >> s`）：
 
 SETUP: $P_b$ 将原来的 share $x_b$ 拆成 $u_b||v_b$，前者为 $l-s$ 位，后者为 $s$ 位，可以证明：
 
@@ -545,5 +542,29 @@ Return (z, s, e, m)
 - 第二行由于 $p$ 是公开的，这是一个 $\mathcal{F}_{GT/LT}$ 操作；第四行还有一个 $\mathcal{F}_{EQ}$ 操作。
 - 第三行和第五行的赋值操作，由于赋值常数$c$是公开的，不存在隐私问题，因此直接 $P_0=0, P_1=c$ 即可。
 - if 分支本质就是 $\mathcal{F}_{MUX}$ 的具体语义。
+
+</v-click>
+
+---
+
+### $\mathcal{F}_{TRS}$
+
+$\mathcal{F}_{TRS}$ 在 $\mathcal{F}_{TR}$ 的基础上，增加了对浮点数粘滞位 $S$ 的进位判定。当被舍去的低 $s$ 位只要有任意一位为 $1$，且 $LSB(x)=0$，则执行进位操作。其功能等同于 `(x >> s) | (x & (2**s - 1) != 0)`。右移还是用 $\mathcal{F}_{TR}$ 搞定（或者说是结合 $\mathcal{F}_{Wrap}$ 与 $\mathcal{F}_{B2A}$），但之后还要做一个 $\mathcal{F}_{Zeros}$ 的操作，成本较高。
+
+<v-click>
+
+由于 $\mathcal{F}_{Zeros}$ 也等价于判断两个 share 的和是否为 $2^s$，或者两者都为$0$，因此其本质也是比较操作（或者 $\mathcal{F}_{Wrap}$ 操作）。因此作者选择将 $\mathcal{F}_{Wrap}$ 和 $\mathcal{F}_{Zeros}$ 捆绑实现成 $\mathcal{F}_{Wrap\&All0s}$，成本仅仅相当于一个比较操作和一个 $\mathcal{F}_{AND}$ 的成本（这里论文有 typo，不是两个 $\mathcal{F}_{AND}$ 的成本）。
+
+</v-click>
+
+<v-click>
+
+### $\mathcal{F}_{RNTE}$
+
+$\mathcal{F}_{RNTE}$ 等价于带舍入的右移 $x \gg_R r$。在前文中我们讲过 IEEE 的舍入逻辑如下：
+
+$$ c = g \land (d \lor f) $$
+
+我们首先用 `TRS(x, r-2)` 确认 $f$ 后面的位是否为 $1$，如果是就加回来以确保粘滞位判定逻辑正确。此时 $x$ 的后三位就分别是$d,g,f$。然后用 $\mathcal{F}_{LUT}$ 将这个 8-bit 的舍入逻辑硬编码到结果 $c$ 中。最后再调用 `TR(x, 2)` 并加上舍入结果 $c$ 即可。
 
 </v-click>
