@@ -10,7 +10,7 @@ Notation: 记安全参数为 $\lambda$, 秘密共享的整数长度为 $l$-bit.
 
 MPC方面，假设我们拥有以下基础知识：
 
-- 可以使用基于公钥密码等方式实现 1-out-of-$k$ $\text{OT}_l$，单次通信量 $2\lambda+kl$。
+- 可以使用基于公钥密码等方式实现 1-out-of-$k$ $\text{OT}_l$，单次通信量 $2\lambda+kl$，使用 IKNP 可以做到 $\lambda+kl$。
 - 基于 2-party 的加法 secret sharing 的加法与标量乘几乎免费（无通信开销）。
 - 可以使用 beaver triple 实现 2-party 的安全乘法操作。一次安全乘法，总通信量为 $2l$。
 
@@ -192,7 +192,7 @@ SETUP: $P_0$ 持有 $a_0,c_0$，$P_1$ 持有 $a_1,c_1$。
 
 <v-click>
 
-通信量为两轮 OT 的开销，也就是 $2(\lambda+2l)=2\lambda+4l$。但 CryptoFlow2 的 3.1.1 节可以将通信开销优化到 $2\lambda+2l$。
+通信量为两轮 IKNP-OT 的开销，也就是 $2(\lambda+2l)=2\lambda+4l$。但 CryptoFlow2 的 3.1.1 节可以将通信开销优化到 $2\lambda+2l$。
 
 </v-click>
 
