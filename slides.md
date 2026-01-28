@@ -539,7 +539,7 @@ Return (z, s, e, m)
 
 这个逻辑符合论文对溢出的处理方式，这里大概描述一下协议是怎么跑的：
 
-- 第二行由于 $p$ 是公开的，这是一个 $\mathcal{F}_{GT/LT}$ 操作；第四行还有一个 $wmathcal{F}_{EQ}$ 操作。
+- 第二行由于 $p$ 是公开的，这是一个 $\mathcal{F}_{GT/LT}$ 操作；第四行还有一个 $\mathcal{F}_{EQ}$ 操作。
 - 第三行和第五行的赋值操作，由于赋值常数$c$是公开的，不存在隐私问题，因此直接 $P_0=0, P_1=c$ 即可。
 - if 分支本质就是 $\mathcal{F}_{MUX}$ 的具体语义。
 
@@ -601,7 +601,7 @@ else
 
 1. 指数对齐。若 $E_x$ > $E_y$，将 $x$ 的尾数左移： $M_x \leftarrow (1.M_x){2^{E_x-E_y}}, \quad E \leftarrow E_y$.
 
-<img src='image.png' width="50%">
+<img src='img/secfloat-image.png' width="50%">
 
 </v-click>
 
@@ -609,7 +609,7 @@ else
 
 2. 尾数相加。考虑$S_x, S_y$的符号情况。若同号，则计算 $M=M_x+M_y$。若异号，则用大者减小者得到差的绝对值$M=|M_x-M_y|$，并附上正确的符号$S$。
 
-<img src='image-1.png' width="50%">
+<img src='img/secfloat-image-1.png' width="50%">
 
 这里考虑同号与异号的情况。同号时，$\beta_1$ 与 $\beta_2$ 的符号位异或为 $0$，否则为 $1$。因此当 $\beta_1.s \oplus \beta_2.s = 1$ 时，将 $m_2$ 变号完成相减操作。
 
@@ -621,7 +621,7 @@ else
 
 3. 规范化。这里我们找到加法结果 $m$ 中最高有效位，为了保证有足够的空间舍入，协议在第一步时将精度为 $q$ 的 $m_1,m_2$ 零扩展为 $2q+2$ 位（但注意精度是 $2q+1$）。假设 MSNZB 的结果为 $k$，要将高位的$1$规范化（也就是对齐后面 Round* 协议的 $2q+1$ 位）需要左移 $2q+1-k$ 位，对应乘 $K=2^{2q+1-k}$。 
 
-<img src='image-2.png' width="50%">
+<img src='img/secfloat-image-2.png' width="50%">
 
 至于指数位的计算，由于先左移了 $2q+1-k$ 位，同时又因为精度变化又增加 $q+1$，因此 $e=e-(2q+1-k)+(q+1)=e+k-q$。
 
@@ -631,7 +631,7 @@ else
 
 4. 写入结果。最后做一轮 $\mathcal{F}_{Round^*}^{p,q,2q+1}$ 的舍入，由于 $|m_1| > |m_2|$，符号位一定由 $\beta_1.s$ 决定。最后检查规范化的结果是否在浮点数有效范围内。
 
-<img src='image-3.png' width="50%">
+<img src='img/secfloat-image-3.png' width="50%">
 
 </v-click>
 
@@ -671,7 +671,7 @@ else
 
 </v-click>
 
-<img src='image-4.png' width="50%">
+<img src='img/secfloat-image-4.png' width="50%">
 
 ---
 
@@ -682,12 +682,12 @@ else
 <div class="w-full flex">
   <!-- 左半 -->
   <div class="w-1/2 flex items-center justify-center">
-    <img src="image-5.png" class="max-w-full max-h-[420px]" v-click="1" />
+    <img src="img/secfloat-image-5.png" class="max-w-full max-h-[420px]" v-click="1" />
   </div>
 
   <!-- 右半 -->
   <div class="w-1/2 flex items-center justify-center">
-    <img src="image-6.png" class="max-w-full max-h-[420px]" v-click="2" />
+    <img src="img/secfloat-image-6.png" class="max-w-full max-h-[420px]" v-click="2" />
   </div>
 </div>
 
@@ -718,7 +718,7 @@ else
 
 1. 首先处理特殊情况：当 $|x|>2^{23}$ 时，由于 $q=23$，超过了尾数的精度，因此 $x$ 一定是整数。$\sin \pi x = 0$。另一种特殊情况是当 $|x|<2^{-14}$ 时，$\sin \pi x \approx \pi x$，其误差在 $x$ 本身浮点表示的误差以内。
 
-<img src='image-7.png' width="50%">
+<img src='img/secfloat-image-7.png' width="50%">
 
 </v-click>
 
