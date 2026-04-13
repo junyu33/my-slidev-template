@@ -217,7 +217,7 @@ Alice，Bob 和 Carol 分别准备自己的私钥 $a,b,c \in \mathbb{F}_p$.
 
 - **Reveal:**
 
-Alice 生成公钥 $(aP, aQ)$，Bob 生成 $(bP，bQ)$，Carol 生成 $(cP, cQ)$，公开这些公钥。
+Alice 生成公钥 $(aP, aQ)$，Bob 生成 $(bP, bQ)$，Carol 生成 $(cP, cQ)$，公开这些公钥。
 
 </v-click>
 
