@@ -51,7 +51,7 @@ $$P + (-P) = \mathcal{O}, P + \mathcal{O} = P$$
 
 <v-click>
 
-- Alice 和 Bob 确定椭圆曲线 $E$ 和公共参数 $P$，Alice 持有私钥 $a$，Bob 持有 私钥 $b$；
+- Alice 和 Bob 确定椭圆曲线 $E$ 和公共参数 $P$，Alice 持有私钥 $a$，Bob 持有私钥 $b$；
 - Alice 计算并公开 $aP$，Bob 计算并公开 $bP$；
 - Alice 计算 $a(bP)=abP$，Bob 计算 $b(aP)=abP$，最终双方都得到相同密钥 $abP$.
 
@@ -145,7 +145,7 @@ $$e_m(aP, bQ)=e_m(P, Q)^{ab}$$
 
 <v-click>
 
-现在总结一下，我们的直觉，离最终的正式协议，还差了一下几点：
+现在总结一下，我们的直觉，离最终的正式协议，还差了以下几点：
 
 - 不能直接用 $e(P, P)$，因为交错性会使结果平凡；
 - 因此需要两个独立方向，而不是单一基点 $P$；
@@ -339,7 +339,7 @@ $$
 
 ---
 
-## Line fuction
+## Line function
 
 基础知识铺垫完成，现在引入 miller 算法中位于核心地位的 line function $g_{P,Q}$：
 
@@ -570,7 +570,7 @@ $$
 \hat\tau(P, Q) = (\frac{f_P(Q + S)}{f_P(S)})^{(q-1)/l} \in \mathbb{F}_q
 $$
 
-其中 $l$ 是质数， $P \in E(\mathbb{F}_q)[l]，Q \in E(\mathbb{F}_q)$, $q \equiv 1 \pmod l$.
+其中 $l$ 是质数， $P \in E(\mathbb{F}_q)[l]，Q \in E(\mathbb{F}_q)$, $q \not\equiv 1 \pmod l$.
 
 </v-click>
 
@@ -603,7 +603,7 @@ print('Q, P\'s tate pairing:', Q.tate(P, S))
 # Q, P's tate pairing: 228
 ```
 
-显然 $279$ 与 $228$ 都是 $\mod 631$ 的五次单位根，满足单位根性质；但 $279 \times 228 \ne 1$，因此交错性不满足。
+显然 $279$ 与 $228$ 都是 $\mod 631$ 的五次单位根，满足单位根性质；但 $279 × 228 \not\equiv 1 \pmod{631}$，因此交错性不满足。
 
 </v-click>
 
