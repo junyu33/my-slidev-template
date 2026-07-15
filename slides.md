@@ -360,7 +360,7 @@ $$
 
 <v-click>
 
-当我们令 $q=p^2$，则 $G_{\Phi_6}(\mathbb F_{p^2}) = G_{\Phi_6}(\mathbb F_q)$，后者刚好是 Granger–Scott 原工作的对象 [^1]。具体而言，Granger–Scott 公式选择的扩域视角为 $\mathbb F_q \subset \mathbb F_{q^2} \subset \mathbb F_{q^6}$。
+当我们令 $q=p^2$ [^1]，则 $G_{\Phi_6}(\mathbb F_{p^2}) = G_{\Phi_6}(\mathbb F_q)$，后者刚好是 Granger–Scott 原工作的对象 [^2]。具体而言，Granger–Scott 公式选择的扩域视角为 $\mathbb F_q \subset \mathbb F_{q^2} \subset \mathbb F_{q^6}$。
 
 </v-click>
 
@@ -386,7 +386,9 @@ $$
 
 </v-click>
 
-[^1]: https://eprint.iacr.org/2009/565
+[^1]: 记住这个等式，接下来会反复用到，我不会再明说
+[^2]: https://eprint.iacr.org/2009/565
+
 
 ---
 
@@ -532,7 +534,7 @@ $$
 
 <v-click>
 
-为了方便，我们记在 $\mathbb{F}_{p^k}$ 的平方操作代价 $S_k$，乘法操作代价为 $M_k$，所以一次 cyclotomic squaring 的代价就是 $3S_4$。而前文我们推导出：
+为了方便，我们记在 $\mathbb{F}_{p^k}$ 的平方操作代价 $S_k$，乘法操作代价为 $M_k$，所以一次 cyclotomic squaring 的代价就是 $3S_4$。而前文我们推导出在这个扩域 $\mathbb{F}_{q^2}=\mathbb{F}_q[v]/(v^2-\xi)$ 中：
 
 </v-click>
 
@@ -650,7 +652,7 @@ Output: A
 
 ---
 
-然后考虑下面一层，也就是 $\mathbb{F}_{p^2} \to \mathbb{F}_{p^4}$，即 $\mathbb{F}_{p^4}$ squaring.
+然后考虑下面一层，也就是 $\mathbb{F}_{p^2} \to \mathbb{F}_{p^4}$，即 $\mathbb{F}_{p^4}$ squaring，扩域为 $\mathbb{F}_{q^2}=\mathbb{F}_q[v]/(v^2-\xi)$。
 
 <v-click>
 
@@ -723,13 +725,103 @@ Output: ta
 
 这里作者为了简化，并没有真的去逐一写出四个原语的实现，而是统一为实现 `SQR_FP2_*WAY` 和 `MUL_FP2_*WAY`。
 
-区别只是同时喂进去多少组输入，以及每个 $F_p$ 运算占几个 lanes。
+区别只是同时喂进去多少组输入，以及每个 $\mathbb{F}_p$ 运算占几个 lanes。
 
 </v-click>
 
 ---
 
+首先考虑简单一点的 `SQR_FP2_*WAY`。数学方面，设 $\alpha_0,\; \alpha_1 \in \mathbb{F_p}, \; u^2=-1$，则 $\mathbb{F}_{p^2}$ 的元素则可表示为 $\alpha_0 + \alpha_1 u$，平方展开为：
 
+$$
+(\alpha_0 + \alpha_1 u)^2 = (\alpha_0 + \alpha_1)(\alpha_0 - \alpha_1) + (2\alpha_0\alpha_1)u
+$$
+
+<v-click>
+
+也就是我们令输出 $r_0 = \alpha_0^2 - \alpha_1^2,\; r_1 = 2\alpha_0\alpha_1$ 即可。
+
+</v-click>
+
+<v-click>
+
+SIMD 实现方面，假如同时做 $j=4$ 个元素的乘法，那么输入为 $\alpha_0^{(j)},\; \alpha_1^{(j)}$，我们也可以得到输出就是 $r_0^{(j)} = (\alpha_0^{(j)} + \alpha_1^{(j)})(\alpha_0^{(j)} - \alpha_1^{(j)}),\; r_1^{(j)} = 2\alpha_0^{(j)}\alpha_1^{(j)}$，并可立即写出 SIMD 伪代码：
+
+</v-click>
+
+<v-click>
+
+```
+Function: SQR_FP2_4WAY(α^(1), ..., α^(4))
+Input: α^(j) = α_0^(j) + α_1^(j)·u ∈ F_{p^2}
+
+(t_0^(1), ..., t_0^(4)) ← (α_0^(1)+α_1^(1), ..., α_0^(4)+α_1^(4))
+(t_1^(1), ..., t_1^(4)) ← (α_0^(1)−α_1^(1), ..., α_0^(4)−α_1^(4))
+
+(r0^(1), r1^(1), ..., r0^(4), r1^(4))
+    ← MUL_FP_8WAY((t0^(1), 2α_0^(1), ..., t0^(4), 2α_0^(4)),
+                  (t1^(1),  α_1^(1), ..., t1^(4),  α_1^(4)))
+
+Output: r^(j) = r_0^(j) + r_1^(j)·u,  j = 1, ..., 4
+```
+
+</v-click>
+
+---
+
+然后考虑 `MUL_FP2_*WAY`。这里有两个元素 $\alpha=\alpha_0+\alpha_1 u, \beta=\beta_0+\beta_1 u$，做标量乘法得：
+
+$$
+\alpha\beta=(\alpha_0\beta_0-\alpha_1\beta_1)+(\alpha_0\beta_1+\alpha_1\beta_0)u
+$$
+
+暴露了四个独立的 multiplication。将其向量化就是 $p_0^{(j)}=\alpha_0^{(j)}\beta_0^{(j)}, p_1^{(j)}=\alpha_1^{(j)}\beta_1^{(j)}, p_2^{(j)}=\alpha_0^{(j)}\beta_1^{(j)}, p_3^{(j)}=\alpha_1^{(j)}\beta_0^{(j)}$。当 $j=2$ 时，代码如下：
+
+```
+Function: MUL_FP2_2WAY(α^(1), β^(1), α^(2), β^(2))
+Input:
+    α^(j) = α_0^(j) + α_1^(j)·u ∈ F_{p^2}
+    β^(j) = β_0^(j) + β_1^(j)·u ∈ F_{p^2}
+
+(p_0^(1), p_1^(1), p_2^(1), p_3^(1),
+ p_0^(2), p_1^(2), p_2^(2), p_3^(2))
+    ← MUL_FP_8WAY(                      // 竖着看
+        (α_0^(1), α_1^(1), α_0^(1), α_1^(1), α_0^(2), α_1^(2), α_0^(2), α_1^(2)),
+        (β_0^(1), β_1^(1), β_1^(1), β_0^(1), β_0^(2), β_1^(2), β_1^(2), β_0^(2))
+    )
+
+Output:
+    r^(j) = (p_0^(j) − p_1^(j))
+          + (p_2^(j) + p_3^(j))·u,  j = 1, 2
+```
+
+---
+
+总结一下，我们可以把 cyclotomic squaring 操作的几个函数的调用关系图画为：
+
+```
+Cyclotomic squaring                                             [(w,x,y,z)]
+|
++-- w=2 --> CYC_SQR_BC_2WAY(b,c)
+|            `--> SQR_FP4_2WAY(b,c)
+|                 +-- x=2 --> SQR_FP2_4WAY(b_0,b_1,c_0,c_1)          [wx=4]
+|                 |            `-- y=2  --> MUL_FP_8WAY(...)    [(2,2,2,1)]
+|                 |                              
+|                 |
+|                 `-- x=1 --> MUL_FP2_2WAY(b_0,b_1,c_0,c_1)          [wx=2]
+|                              `-- y=4  --> MUL_FP_8WAY(...)    [(2,1,4,1)]
+|
+`-- w=1 --> CYC_SQR_A_1WAY(a)
+             `--> SQR_FP4_1WAY(a)
+                  +-- x=2 --> SQR_FP2_2WAY(a_0,a_1)                  [wx=2]
+                  |            `-- y=2  --> MUL_FP_4x2WAY(...)  [(1,2,2,2)]
+                  |
+                  `-- x=1 --> MUL_FP2_1WAY(a_0,a_1)                  [wx=1]
+                               `-- y=4  --> MUL_FP_4x2WAY(...)  [(1,1,4,2)]
+                                       
+```
+
+这个问题最终被抽象成了 `MUL_FP_8WAY` 和 `MUL_FP_4x2WAY` 在具体 SIMD 上的实现，也就是下一节的内容。
 
 ---
 
@@ -738,6 +830,110 @@ Output: ta
 <CyclotomicSquaringFlow focus="ifma" />
 
 ---
+
+在正式讲这两个函数之前，我们先了解一下，SIMD 在具体的硬件中是如何进行加法和乘法操作的。假如我们要同时操作 8 个 381-bit 的数 $a^{(j)}$，$j=1 \cdots 8$。注意这里的 $a^{(j)}$ 不是整体存放在一个 ZMM 寄存器中，而是把每个 $a^{(j)}$ 的 48 位切片，从低到高依次存放到 `ZMM A_0` 到 `ZMM A_7` 中，如图所示：
+
+<v-click>
+
+```
+                     8 个并行任务 / SIMD lanes
+                 (1)      (2)      (3)            (8)
+
+ZMM A_0, limb 0  a_0^(1)  a_0^(2)  a_0^(3)  ...  a_0^(8)
+ZMM A_1, limb 1  a_1^(1)  a_1^(2)  a_1^(3)  ...  a_1^(8)
+ZMM A_2, limb 2  a_2^(1)  a_2^(2)  a_2^(3)  ...  a_2^(8)
+...
+ZMM A_7, limb 7  a_7^(1)  a_7^(2)  a_7^(3)  ...  a_7^(8)
+```
+
+</v-click>
+
+<v-click>
+
+如果我们要同时计算 $a^{(j)}$ 与 $b^{(j)}$ 这 $8+8=16$ 个数的加法（假设 $b^{(j)}$ 被分别存放在 `ZMM B_0` 到 `ZMM B_7` 中），SIMD 会使用 `C_0 ← VPADDQ(A_0, B_0)` 计算出低 48 位的结果 `C_0`，进位会被丢弃。
+
+</v-click>
+
+<v-click>
+
+然后执行以下步骤之后，就完成了同时对 $a^{(j)}$ 和 $b^{(j)}$ 这 $8+8=16$ 个数的加法操作：
+
+```
+C_0 ← VPADDQ(A_0, B_0)   C_0 ← A_0 + B_0
+C_1 ← VPADDQ(A_1, B_1)   C_1 ← A_1 + B_1
+...
+C_7 ← VPADDQ(A_7, B_7)   C_7 ← A_7 + B_7
+```
+
+</v-click>
+
+---
+
+那可能有同学会问：那为什么要搞这么麻烦，每个元素存一个 ZMM 寄存器，ZMM 直接相加不也能实现同样的 8 次 `VPADDQ` 操作吗？
+
+<v-click>
+
+答案也确实如此。但如果是要做乘法操作，就不是那么简单了。我们先介绍“官方的 SIMD 乘法操作”：
+
+</v-click>
+
+<v-click>
+
+由于乘法本质上也可以写成卷积的形式，需要将两个乘数的每一个 limb 执行乘法指令，一共要执行 $8 \times 8 = 64$ 次。举一个例子，假如选择 limb $i=0, j=3$，也就是选出了这两行：
+
+```
+A_0 = | a_0^(1) | a_0^(2) | ... | a_0^(8) |                     B_3 = | b_3^(1) | b_3^(2) | ... | b_3^(8) |
+```
+
+</v-click>
+
+<v-click>
+
+那么执行一条向量乘法：
+
+```
+P_3 ← IFMA(A_0, B_3)
+```
+
+会得到：
+
+```
+P_3   = | a_0^(1)b_3^(1) | a_0^(2)b_3^(2) | ... | a_0^(8)b_3^(8) |
+```
+
+</v-click>
+
+<v-click>
+
+当然 48-bit 的乘法结果肯定会超出 limb 的 64-bit 范围，因次实际上这个指令由两个 intrinsic 完成：`vpmadd52luq` `vpmadd52huq`，分别对应做 52-bit 的乘法，保留结果的低 52 位和高 52 位。
+
+</v-click>
+
+---
+
+对于乘法局部结果 $P_k$，我们需要通过 IFMA 指令来做卷积：
+
+$$P_k = \sum_{i+j=k} \; \text{IFMA}(A_i, B_j)$$
+
+<v-click>
+
+其中 $0 \le k \le 14$，对应 limb 0-14，进位的话分布在 limb 1-15，所以处理进位之后，把这 16 个 limb 从低到高拼起来即可同时得到 8 个元素的乘法结果。
+
+> 注意到在 `AVX512-IFMA` 指令集中，程序员可见的 ZMM 寄存器有 32 个，而 $8+8+16=32$，所以做 8 个 $\mathbb{F}_p$ 乘法刚好够用。
+
+</v-click>
+
+<v-click>
+
+回到之前的问题：现在如果还使用“每个元素存一个 ZMM 寄存器”的存放方案，还可以方便实现乘法吗？
+
+这个问题留作课后思考。
+
+</v-click>
+
+---
+
+
 
 ---
 
@@ -779,7 +975,7 @@ Intel Core i3-1005G1 (Ice Lake), GCC 13.3, <code>-O3</code>, TurboBoost disabled
 ## Evaluation: end-to-end pairing
 
 <div class="text-sm text-gray-500 mb-6">
-Cycles on Intel Core i3-1005G1 · speed-up relative to the corresponding scalar blst baseline
+Cycles on Intel Core i3-1005G1 · speed-up relative to the original scalar blst Granger–Scott baseline
 </div>
 
 | Computation | blst | avxbls | Speed-up |

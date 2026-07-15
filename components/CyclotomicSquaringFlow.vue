@@ -21,9 +21,9 @@ const formulas = {
   costArrow: String.raw`\underbrace{\Downarrow}_{\text{three }\mathbb{F}_{p^4}\text{ squarings}}`,
   cost: String.raw`\boxed{\text{主要成本}=a^2+b^2+c^2=3S_4=6S_2+3M_2}`,
   hybridArrow: String.raw`\underbrace{\Downarrow}_{\text{hybrid vectorization}}`,
-  hybrid: String.raw`\boxed{\begin{aligned}A&:\quad(1\times2\times2\times2)\text{-way}\\(B,C)&:\quad(2\times2\times2\times1)\text{-way}\end{aligned}}`,
+  hybrid: String.raw`\boxed{\begin{array}{rr}(B,C):\quad &(2\times2\times2\times1)\text{-way}\\ &(2\times1\times4\times1)\text{-way}\\A:\quad &(1\times2\times2\times2)\text{-way}\\ &(1\times1\times4\times2)\text{-way}\end{array}}`,
   ifmaArrow: String.raw`\underbrace{\Downarrow}_{\text{IFMA / 48-bit limb}}`,
-  ifma: String.raw`\boxed{\begin{aligned}x\in \mathbb{F}_p:\qquad x&=\sum_{i=0}^{7}x_i2^{48i}\\&8\text{ 个 }48\text{-bit limbs}\\&\texttt{vpmadd52luq/huq}\\&8\text{ 路 }52\times52\text{-bit fused multiply-add}\end{aligned}}`,
+  ifma: String.raw`\boxed{\begin{aligned}x\in \mathbb{F}_p:\qquad x&=\sum_{i=0}^{7}x_i2^{48i}\\&\hspace{-0.35em}\texttt{vpmadd52luq/huq}\end{aligned}}`,
 }
 </script>
 
@@ -38,9 +38,9 @@ const formulas = {
     <div class="cyclo-card cyclo-right" :class="red('cost')" style="top: 0" v-html="math(formulas.cost)" />
     <div class="cyclo-arrow cyclo-right" :class="red('cost')" style="top: 46px; height: 38px" v-html="math(formulas.costArrow)" />
     <div class="cyclo-card cyclo-right" :class="red('hybrid')" style="top: 95px" v-html="math(formulas.hybrid)" />
-    <div class="cyclo-arrow cyclo-right" :class="red('hybrid')" style="top: 160px; height: 38px" v-html="math(formulas.hybridArrow)" />
-    <div class="cyclo-card cyclo-right" :class="red('ifma')" style="top: 205px" v-html="math(formulas.ifma)" />
-    <div class="cyclo-arrow cyclo-right" :class="red('ifma')" style="top: 390px; height: 38px" v-html="math(formulas.ifmaArrow)" />
+    <div class="cyclo-arrow cyclo-right" :class="red('hybrid')" style="top: 215px; height: 38px" v-html="math(formulas.hybridArrow)" />
+    <div class="cyclo-card cyclo-right" :class="red('ifma')" style="top: 270px" v-html="math(formulas.ifma)" />
+    <div class="cyclo-arrow cyclo-right" :class="red('ifma')" style="top: 400px; height: 38px" v-html="math(formulas.ifmaArrow)" />
   </div>
 </template>
 
