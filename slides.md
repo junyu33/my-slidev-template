@@ -590,7 +590,7 @@ $$
 
 <v-click>
 
-然而我们看到，前面的乘法操作是 $3S_4$，并不是 1/2/4/8 中的任意一个数，不能完整地填满整个 ZMM 寄存器。因此作者提出了一种名为 **hybrid vectorization** 的新技术，简而言之就是**在某一个计算 level**，将某些结构相似的算式绑定在一起向量化，而让剩下的那一个做标量乘法。
+然而我们看到，前面的乘法操作是 $3S_4$，并不是 1/2/4/8 中的任意一个数，不能完整地填满整个 ZMM 寄存器。因此作者提出了一种名为 **hybrid vectorization** 的新技术，简而言之就是**在某一个计算 level**，将某些结构相似的算式绑定在一起向量化，而让剩下的那一个做 1-way 布局，并将 SIMD 并行性继续下沉到更低层。
 
 </v-click>
 
@@ -636,7 +636,7 @@ Output: (B, C)
 
 <v-click>
 
-对于另一个 $A$，就直接计算一个标量的 squaring 即可，对应 $A$ 这边的 $w=1$：
+对于另一个 $A$，就直接采用 1-way $\mathbb{F}_{p^4}$ squaring，对应 $A$ 这边的 $w=1$：
 
 ```
 Function: CYC_SQR_A_1WAY(a)
@@ -666,7 +666,7 @@ $$
 
 <v-click>
 
-思路与上面那个 cyclotomic squaring 一致，我们显然要将 $a_0^2, b_0^2$ 同时做 SIMD，然后留 $a_0, b_0$ 做 scalar。上一层 square $(B,C)$ 部分的伪代码如下：
+思路与上面那个 cyclotomic squaring 一致，我们显然要将 $a_0^2, b_0^2$ 同时做 SIMD，而交叉乘法 $a_0b_0$ 则单独处理。上一层 square $(B,C)$ 部分的伪代码如下：
 
 </v-click>
 
@@ -694,7 +694,7 @@ Output: (tb, tc)
 
 ---
 
-对于上一层的标量部分，也就处理单独 $A$ 路径中 $a^2$ 部分，对应以下代码：
+对于上一层的 1-way 分支，也就是单独处理 $A$ 路径中 $a^2$ 部分，对应以下代码：
 
 <v-click>
 
@@ -769,7 +769,7 @@ Output: r^(j) = r_0^(j) + r_1^(j)·u,  j = 1, ..., 4
 
 ---
 
-然后考虑 `MUL_FP2_*WAY`。这里有两个元素 $\alpha=\alpha_0+\alpha_1 u, \beta=\beta_0+\beta_1 u$，做标量乘法得：
+然后考虑 `MUL_FP2_*WAY`。这里有两个元素 $\alpha=\alpha_0+\alpha_1 u, \beta=\beta_0+\beta_1 u$，普通展开可得：
 
 $$
 \alpha\beta=(\alpha_0\beta_0-\alpha_1\beta_1)+(\alpha_0\beta_1+\alpha_1\beta_0)u
