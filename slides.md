@@ -138,8 +138,8 @@ $$
 
 <v-click>
 
-<div class="flex justify-center mt-4">
-  <img src="./img/cheng-image.png" class="w-3/4" />
+<div style="position: absolute; left: 50%; top: 250px; width: 56%; transform: translateX(-50%);">
+  <img src="/img/cheng-image.png" style="width: 100%;" />
 </div>
 
 </v-click>
@@ -596,7 +596,7 @@ $$
 
 <v-click>
 
-首先拿 Granger-Scott 这一层（也就是最上面那一层）为例。我们有三种路径 $A,B,C$:
+首先拿 Granger-Scott 这一层（也就是最上面那一层）为例。我们有三种路径 $A,B,C$：
 
 $$
 \boxed{A = 3a^2-2\bar{a}, \quad B = 3vc^2+2\bar{b}, \quad C = 3b^2 - 2\bar{c}.}
@@ -917,23 +917,271 @@ $$P_k = \sum_{i+j=k} \; \text{IFMA}(A_i, B_j)$$
 
 <v-click>
 
-其中 $0 \le k \le 14$，对应 limb 0-14，进位的话分布在 limb 1-15，所以处理进位之后，把这 16 个 limb 从低到高拼起来即可同时得到 8 个元素的乘法结果。
-
-> 注意到在 `AVX512-IFMA` 指令集中，程序员可见的 ZMM 寄存器有 32 个，而 $8+8+16=32$，所以做 8 个 $\mathbb{F}_p$ 乘法刚好够用。
+其中 $0 \le k \le 14$，对应 limb 0-14，进位的话分布在 limb 1-15，所以处理进位之后，把这 16 个 limb 从低到高拼起来即可同时得到 8 个元素的乘法结果。注意到在 `AVX512-IFMA` 指令集中，程序员可见的 ZMM 寄存器有 32 个，而 $8+8+16=32$，所以做 8 个 $\mathbb{F}_p$ 乘法刚好够用。
 
 </v-click>
 
 <v-click>
 
-回到之前的问题：现在如果还使用“每个元素存一个 ZMM 寄存器”的存放方案，还可以方便实现乘法吗？
+> 回到之前的问题：现在如果还使用“每个元素存一个 ZMM 寄存器”的存放方案，还可以方便实现乘法吗？
+>
+> 这个问题留作课后思考。
 
-这个问题留作课后思考。
+</v-click>
+
+<v-click>
+
+然后我们回到这个式子，如果老老实实做 64 次 IFMA 乘法，效率肯定不高。
+
+于是 Cheng 选择把 8-limb 的乘法用 Karatsuba 分成 4-limb 的三次乘法。也就是卷积做：
+
+$$\sum \; \text{IFMA}(A_{L}, B_{L}) \qquad \sum \; \text{IFMA}(A_{H}, B_{H}) \qquad \sum \; \text{IFMA}(A_{L}+A_{H}, B_{L}+B_{H})$$
+
+</v-click>
+
+<v-click>
+
+首先我们考虑 4-limb 卷积的代码（见下页）：
 
 </v-click>
 
 ---
 
+```
+Function: CONV4_IFMA(A_0, ..., A_3, B_0, ..., B_3)
+Input: A_i, B_i ∈ ZMM
 
+for k = 0, ..., 6:
+    L_k ← 0
+    H_k ← 0
+
+    for all i+j=k:
+        L_k ← VMACLO(L_k, A_i, B_j)
+        H_k ← VMACHI(H_k, A_i, B_j)
+
+Z_0 ← L_0
+for k = 1, ..., 6:
+    Z_k ← L_k + (H_{k−1} << 4)
+Z_7 ← H_6 << 4
+
+Output: (Z_0, ..., Z_7)
+```
+
+<v-click>
+
+注意这里左移四位是因为 VFMA 指令会截断掉后面的 52-bit，但我们实际上是 48-bit 一个 limb，这样实际上只留了高 $96 - 52 = 44$-bit，需要左移四位来恢复正确的 limb 数值。
+
+</v-click>
+
+<v-click>
+
+但左移四位仍然有一个问题，就是先前右移被截断的 $[48, 52)$ 位并不会立即恢复。作者为了流水式拼接，选择不在现在加回这四位，而是在最后的 carry propagation 阶段一并处理。
+
+</v-click>
+
+---
+
+有了四位卷积的内核，我们就可以实现 `MUL_FP_8WAY` 和 `MUL_FP_4x2WAY` 了，我们先看前者。我们假设 8-lane 输入 $\alpha^{(j)}, \beta^{(j)}$ 被分成了两半 $\alpha^{(j)} = \alpha_{L}^{(j)} + R\alpha_{H}^{(j)}, R=2^{48}$，则直接套用 Karatsuba 公式：
+
+```
+Function: MUL_FP_8WAY(α^(1), ..., α^(8), β^(1), ..., β^(8))
+Input:
+    A_i = ⟨α_i^(1), ..., α_i^(8)⟩, i = 0, ..., 7
+    B_i = ⟨β_i^(1), ..., β_i^(8)⟩, i = 0, ..., 7
+
+Z_L ← CONV4_IFMA(A_0, ..., A_3, B_0, ..., B_3)
+Z_H ← CONV4_IFMA(A_4, ..., A_7, B_4, ..., B_7)
+
+for i = 0, ..., 3:
+    A'_i ← A_i + A_{i+4}
+    B'_i ← B_i + B_{i+4}
+
+Z_M ← CONV4_IFMA(A'_0, ..., A'_3, B'_0, ..., B'_3)
+
+Z_M ← Z_M − Z_L − Z_H
+
+T ← Z_L + R^4·Z_M + R^8·Z_H
+
+Output:
+    tt^(j) = α^(j)β^(j), j = 1, ..., 8
+    // double-length, unreduced
+```
+
+---
+
+`MUL_FP_4x2WAY` 相对复杂一点，这里的 $\alpha_i$ 不再是按照 limb 存成一列 $1 \times 8$ 的形式，而是类似于 $2 \times 4$ 的存储方式：
+
+```
+lanes: |   0     1   |   2     3   |   4     5   |   6     7   |
+       |   task 1    |   task 2    |   task 3    |   task 4    |
+
+       | α_{0} α_{4} |     ...     |
+       | α_{1} α_{5} |     ...     |
+       | α_{2} α_{6} |     ...     |
+       | α_{3} α_{7} |     ...     |
+```
+
+<v-click>
+
+然后介绍两个硬件重排函数 `SHUF_LO`, `SHUF_HI`，前者的作用是把每一对元素中左边那个复制两次，后者就是右边那个复制两次，形如对原来位于 ZMM 寄存器的向量 $X$：
+
+```
+lane:    0   1   2   3   4   5   6   7
+X    = | A | B | C | D | E | F | G | H |
+```
+
+做 `SHUF_LO` 会得到 `AACCEEGG`，而做 `SHUF_HI` 会得到 `BBDDFFHH`。
+
+</v-click>
+
+<v-click>
+
+然后我们看对应代码（见下页）：
+
+</v-click>
+
+
+---
+
+```
+Function: MUL_FP_4x2WAY(α^(1), ..., α^(4),
+                        β^(1), ..., β^(4))
+Input:
+for i = 0, ..., 3
+    A_i = ⟨α_{2i}^(1), α_{2i+1}^(1), ..., α_{2i}^(4), α_{2i+1}^(4)⟩
+    B_i = ⟨β_{2i}^(1), β_{2i+1}^(1), ..., β_{2i}^(4), β_{2i+1}^(4)⟩
+
+L_0, ..., L_10 ← 0; H_0, ..., H_10 ← 0
+
+for j = 0, ..., 3:
+    B_even ← SHUF_LO(B_j);         B_odd  ← SHUF_HI(B_j)
+
+    for i = 0, ..., 3:
+        L_{i+j} ← VMACLO(L_{i+j}, A_i, B_even);         L_{i+j+4} ← VMACLO(L_{i+j+4}, A_i, B_odd)
+        H_{i+j} ← VMACHI(H_{i+j}, A_i, B_even);         H_{i+j+4} ← VMACHI(H_{i+j+4}, A_i, B_odd)
+
+Z_0 ← L_0
+for k = 1, ..., 10:
+    Z_k ← L_k + (H_{k−1} << 4)
+Z_11 ← H_10 << 4
+
+Output:
+    tt^(j) = α^(j)β^(j), j = 1, ..., 4
+    // paired-lane double-length representation
+```
+
+---
+
+中间循环的过程可能有点抽象，这里展开一下。对于四个独立乘法任务的 $A_i$ 和 $B_j$ 分块，令：
+
+```
+A_i = | a | b | c | d | e | f | g | h | = | α_i^(1) | α_{i+4}^(1) | ... |
+B_j = | A | B | C | D | E | F | G | H | = | β_i^(1) | β_{i+4}^(1) | ... |
+```
+
+<v-click>
+
+假如我们拆分乘数 $B_j$，shuffle 之后：
+
+```
+B_even = SHUF_LO(B_j)                          B_odd  = SHUF_HI(B_j)
+       = | A A | C C | E E | G G |                    = | B B | D D | F F | H H |
+```
+
+</v-click>
+
+<v-click>
+
+然后分别和 $A_i$ 逐 lane 相乘：
+
+```
+A_i × B_even                                   A_i × B_odd
+= | aA bA | cC dC | eE fE | gG hG |                   = | aB bB | cD dD | eF fF | gH hH |
+```
+
+</v-click>
+
+<v-click>
+
+然后考虑数位问题，对于 $A_i \times B_{even}$，对应的数位是 $i, j$，因此结果该进入 $L_{i+j}$ 和 $H_{i+j}$；对于 $A_i \times B_{odd}$ 对应的数位是 $i, j+4$，因此结果该进入 $L_{i+j+4}$ 和 $H_{i+j+4}$。最后再做 carry-propagation 即可。
+
+</v-click>
+
+<v-click>
+
+注意这里没有用到 Karatsuba，而且有大量 shuffle 操作，因此效率不如 `MUL_FP_8WAY`。
+
+</v-click>
+
+---
+
+### 一些细碎的优化（从底层到高层说）
+
+<v-click>
+
+- 每个基域元素采用 8 个 48-bit limbs，而不是将 IFMA 支持的 52 bits
+  完全用满，从而留下 4 bits headroom。这样，Karatsuba 和扩域公式中的
+  一些 limb-wise 加法之后，操作数仍可直接送入 IFMA。
+
+</v-click>
+
+<v-click>
+
+- 在基域乘法中，先用 IFMA 按 limb pair 扫描卷积，并将 partial products
+  直接累加到对应的 double-length accumulator；最后再统一进行 carry
+  propagation。IFMA 自带 fused accumulation，因此不需要为每个 partial
+  product 额外执行向量加法，有利于减少 port congestion 和调度压力。
+
+</v-click>
+
+<v-click>
+
+- 在 $\mathbb F_{p^4}$ squaring 中，作者采用
+  $S_4=2S_2+M_2$ 的 schoolbook 公式，而不是成本为 $3S_2$
+  的 Karatsuba 公式，因为前者在向量实现中需要更少的加减法。
+
+</v-click>
+
+<v-click>
+
+- 底层 $\mathbb F_{p^2}$ multiplication 和 squaring 可以暂时保留
+  double-length 中间结果，不立即做模约减；等到一次
+  $\mathbb F_{p^4}$ squaring 的末尾再统一 reduction。
+  这会增加 blend 和 permutation 开销，但实测 lazy reduction
+  仍然更快。
+
+</v-click>
+
+<v-click>
+
+- Cyclotomic squaring 的输出 $A$ 与 $(B,C)$ 保持和输入
+  $a$ 与 $(b,c)$ 相同的向量布局。因此连续执行 squaring 时，
+  上一轮输出可以直接作为下一轮输入，不需要额外的 vector transformation。
+
+</v-click>
+
+<v-click>
+
+- Granger--Scott full squaring 中，$A$ 分支的并行程度低于
+  $(B,C)$ 分支。作者因此也集成了已有的 compressed cyclotomic
+  squaring：连续平方时仅保存压缩表示
+  $\mathcal C(g)=(b,c)$，并只更新 $B,C$，暂时省去 $A$。
+  当需要把选定的 $g^{2^i}$ 相乘以构造 $g^{|z|}$ 时，再通过一次
+  batched decompression 恢复缺失的 $A$ 分量。
+
+</v-click>
+
+---
+
+### From algebra to AVX-512IFMA
+
+<AlgebraToIfma />
+
+<v-click>
+
+至此，Granger–Scott 给出的三个 $\mathbb F_{p^4}$ 平方，已经被逐层分解为两种具体的 AVX-512IFMA 基域乘法内核。Hybrid vectorization 的核心不是提出新的域运算公式，而是在不同扩域层之间重新分配并行度，使八个 SIMD lanes 始终尽可能被有效利用。接下来通过实验观察，这种布局是否真的减少了 transformation 和 reduction 开销，并最终改善完整 pairing 的性能。
+
+</v-click>
 
 ---
 
